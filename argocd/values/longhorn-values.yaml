@@ -1,0 +1,18 @@
+defaultSettings:
+  defaultReplicaCount: 2
+
+persistence:
+  defaultClass: false
+  defaultClassReplicaCount: 2
+  defaultFsType: ext4
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+ingress:
+  enabled: false
