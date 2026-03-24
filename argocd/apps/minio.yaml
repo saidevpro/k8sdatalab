@@ -6,12 +6,12 @@ metadata:
 spec:
   project: lab-system
   source:
-    repoURL: https://github.com/saidevpro/k8sdatalab.git
+    repoURL: https://github.com/saidevpro/k8sdatalab
     targetRevision: main
     path: argocd/charts/minio
     helm:
       valueFiles:
-        - ../values/minio-values.yaml
+        - ../../values/minio-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: lab-system

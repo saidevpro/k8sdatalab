@@ -29,7 +29,7 @@ mcImage:
   pullPolicy: IfNotPresent
 
 ## minio mode, i.e. standalone or distributed
-mode: distributed ## other supported values are "standalone"
+mode: standalone ## other supported values are "standalone"
 
 ## Additional labels to include with deployment or statefulset
 additionalLabels: {}
@@ -162,7 +162,7 @@ persistence:
   storageClass: ''
   volumeName: ''
   accessMode: ReadWriteOnce
-  size: 500Gi
+  size: 10Gi
 
   ## If subPath is set mount a sub folder of a volume instead of the root of the volume.
   ## This is especially handy for volume plugins that don't natively support sub mounting (like glusterfs).
