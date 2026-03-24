@@ -4,6 +4,7 @@ metadata:
   name: minio
   namespace: lab-system
 spec:
+  project: lab-system
   source:
     repoURL: https://github.com/saidevpro/k8sdatalab.git
     targetRevision: main
