@@ -1,0 +1,33 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-console
+  namespace: lab-system
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`minio.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: minio-console
+          port: 9001
+  tls:
+    certResolver: letsencrypt
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-api
+  namespace: lab-system
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`minio-api.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: minio
+          port: 9000
+  tls:
+    certResolver: letsencrypt
