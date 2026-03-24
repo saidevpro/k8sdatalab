@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: minio
+  name: longhorn
   namespace: argocd
 spec:
   project: lab-system
   source:
     repoURL: https://github.com/saidevpro/k8sdatalab
     targetRevision: main
-    path: argocd/charts/minio
+    path: argocd/charts/longhorn
     helm:
       valueFiles:
-        - ../../values/minio-values.yaml
+        - ../../values/longhorn-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: lab-system
