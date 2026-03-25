@@ -65,6 +65,7 @@ defaultAirflowPassword: Gfz#Klu8n9VC4c7T92D
 
 migrateDatabaseJob:
   enabled: true
+  useHelmHooks: false
   resources:
     requests:
       memory: 256Mi
