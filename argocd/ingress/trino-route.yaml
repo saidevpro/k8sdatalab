@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: trino
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`trino.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: trino
+          port: 8080
+  tls:
+    certResolver: letsencrypt
