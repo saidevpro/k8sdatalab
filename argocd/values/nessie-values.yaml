@@ -1,0 +1,46 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/projectnessie/nessie
+  pullPolicy: IfNotPresent
+
+versionStoreType: JDBC2
+
+jdbc:
+  jdbcUrl: jdbc:postgresql://postgresql.lab-system.svc.cluster.local:5432/nessie-db?currentSchema=nessie
+  secret:
+    name: nessie-pgcreds
+    username: username
+    password: password
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+service:
+  type: ClusterIP
+  ports:
+    - name: nessie-http
+      number: 19120
+
+metrics:
+  enabled: false
+  tags:
+    environment: production
+
+serviceMonitor:
+  enabled: false
+  interval: "30s"
+
+serviceAccount:
+  create: true
+
+log:
+  level: INFO
+  console:
+    enabled: true
+    json: false
