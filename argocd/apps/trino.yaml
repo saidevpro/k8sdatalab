@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trino
+spec:
+  project: lab-system
+  source:
+    repoURL: https://github.com/saidevpro/k8sdatalab
+    targetRevision: main
+    path: argocd/charts/trino
+    helm:
+      valueFiles:
+        - ../../values/trino-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: lab-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
