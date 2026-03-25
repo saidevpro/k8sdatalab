@@ -1,13 +1,9 @@
-server:
-  workers: 2 # ← 1 coordinator + 2 workers
+# argocd/values/trino-values.yaml
 
-additionalConfigs:
-  config.properties: |
-    http-server.process-forwarded=true
+server:
+  workers: 2
 
 coordinator:
-  additionalJVMConfig: []
-  config: http-server.process-forwarded=true
   resources:
     requests:
       memory: 512Mi
@@ -15,6 +11,9 @@ coordinator:
     limits:
       memory: 1Gi
       cpu: 500m
+  additionalConfigFiles:
+    config.properties: |
+      http-server.process-forwarded=true
 
 worker:
   resources:
@@ -24,18 +23,9 @@ worker:
     limits:
       memory: 1Gi
       cpu: 500m
-
-# additionalCatalogs:
-#   iceberg: |-
-#     connector.name=iceberg
-#     iceberg.catalog.type=rest
-#     fs.native-s3.enabled=true
-#     s3.endpoint=http://minio-api.k8sdatalab.com
-#     s3.aws-access-key=minio
-#     s3.aws-secret-key=+~J3|cr{rQ61
-#     s3.path-style-access=true
-#     s3.region=us-east-1
-#     iceberg.warehouse=s3://datalake/warehouse/
+  additionalConfigFiles:
+    config.properties: |
+      http-server.process-forwarded=true
 
 service:
   type: ClusterIP
