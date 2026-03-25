@@ -1,17 +1,13 @@
 server:
   workers: 2 # ← 1 coordinator + 2 workers
 
-coordinator:
-
-
 additionalConfigs:
   config.properties: |
     http-server.process-forwarded=true
 
 coordinator:
   additionalJVMConfig: []
-  config:
-    http-server.process-forwarded=true
+  config: http-server.process-forwarded=true
   resources:
     requests:
       memory: 512Mi
