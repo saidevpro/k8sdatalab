@@ -9,7 +9,7 @@ spec:
     - match: Host(`airflow.k8sdatalab.com`)
       kind: Rule
       services:
-        - name: airflow-webserver
+        - name: airflow-api-server
           port: 8080
   tls:
     certResolver: letsencrypt
