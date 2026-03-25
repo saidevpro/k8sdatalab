@@ -51,14 +51,15 @@ logs:
 dags:
   gitSync:
     enabled: true
-    repo: https://github.com/saidevpro/k8sdatalab
+    repo: https://github.com/saidevpro/k8sdatalab.git
     branch: main
-    subPath: src/airflow/dags/
+    subPath: src/airflow/dags
     period: 60s
     credentialsSecret: airflow-git-sync-credentials
 
 # Créer un user admin
 createUserJob:
+  enabled: false
   useHelmHooks: false
 
 defaultAirflowUsername: admin
