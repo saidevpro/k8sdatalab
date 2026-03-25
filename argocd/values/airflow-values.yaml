@@ -1,8 +1,14 @@
-# Mode déploiement
 executor: KubernetesExecutor # ← chaque task = 1 pod k8s
 
 # Authentification UI
 webserverSecretKey: "ca40912fb2205b9fadc2d4174fb90f331bbcde09e0805da8503a2272b305b474"
+
+apiServer:
+  enabled: true
+  args:
+    - "bash"
+    - "-c"
+    - "exec airflow api-server --proxy-headers"
 
 webserver:
   resources:
@@ -77,3 +83,5 @@ migrateDatabaseJob:
 env:
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
     value: "false"
+  - name: FORWARDED_ALLOW_IPS
+    value: "*"
