@@ -1,5 +1,3 @@
-# argocd/values/trino-values.yaml
-
 server:
   workers: 2
 
@@ -11,9 +9,9 @@ coordinator:
     limits:
       memory: 1Gi
       cpu: 500m
-  additionalConfigFiles:
-    config.properties: |
-      http-server.process-forwarded=true
+  # additionalConfigFiles:
+  #   config.properties: |
+  #     http-server.process-forwarded=true
 
 worker:
   resources:
@@ -23,9 +21,9 @@ worker:
     limits:
       memory: 1Gi
       cpu: 500m
-  additionalConfigFiles:
-    config.properties: |
-      http-server.process-forwarded=true
+  # additionalConfigFiles:
+  #   config.properties: |
+  #     http-server.process-forwarded=true
 
 service:
   type: ClusterIP
