@@ -1,21 +1,18 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: longhorn
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+  name: minio
 spec:
   project: lab-system
   source:
     repoURL: https://github.com/saidevpro/k8sdatalab
     targetRevision: main
-    path: argocd/charts/longhorn
-    helm:
-      valueFiles:
-        - ../../values/longhorn-values.yaml
+    path: argocd/ingress
   destination:
     server: https://kubernetes.default.svc
     namespace: lab-system
   syncPolicy:
+    automated:
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
