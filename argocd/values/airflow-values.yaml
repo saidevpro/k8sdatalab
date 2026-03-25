@@ -55,6 +55,7 @@ dags:
     branch: main
     subPath: src/airflow/dags/
     period: 60s
+    credentialsSecret: airflow-git-sync-credentials
 
 # Créer un user admin
 createUserJob:
