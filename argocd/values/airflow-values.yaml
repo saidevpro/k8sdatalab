@@ -63,6 +63,16 @@ createUserJob:
 defaultAirflowUsername: admin
 defaultAirflowPassword: Gfz#Klu8n9VC4c7T92D
 
+migrateDatabaseJob:
+  enabled: true
+  jobAnnotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+
 # Désactiver les exemples
 env:
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
