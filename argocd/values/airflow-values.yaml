@@ -67,9 +67,13 @@ dags:
 createUserJob:
   enabled: false
   useHelmHooks: false
-
-defaultAirflowUsername: admin
-defaultAirflowPassword: Gfz#Klu8n9VC4c7T92D
+  defaultUser:
+    role: Admin
+    username: admin
+    email: saidevproject@gmail.com
+    firstName: said
+    lastName: dev
+    password: "Gfz#Klu8n9VC4c7T92D"
 
 migrateDatabaseJob:
   enabled: true
