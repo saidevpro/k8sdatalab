@@ -4,10 +4,11 @@ certManager:
   namespace: cert-manager
   serviceAccountName: cert-manager
 
-resources:
-  requests:
-    memory: 64Mi
-    cpu: 50m
-  limits:
-    memory: 128Mi
-    cpu: 100m
+pod:
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 100m
