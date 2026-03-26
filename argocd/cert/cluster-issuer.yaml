@@ -1,0 +1,26 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    email: saidevproject@gmail.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-private-key
+    solvers:
+      - dns01:
+          webhook:
+            groupName: acme.k8sdatalab.com
+            solverName: ovh
+            config:
+              endpoint: ovh-eu
+              applicationKeySecretRef:
+                name: ovh-token-credentials
+                key: applicationKey
+              applicationSecretSecretRef:
+                name: ovh-token-credentials
+                key: applicationSecret
+              consumerKeySecretRef:
+                name: ovh-token-credentials
+                key: consumerKey
