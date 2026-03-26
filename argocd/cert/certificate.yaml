@@ -9,5 +9,4 @@ spec:
     name: letsencrypt
     kind: ClusterIssuer
   dnsNames:
-    - "k8sdatalab.com"
     - "*.k8sdatalab.com"
