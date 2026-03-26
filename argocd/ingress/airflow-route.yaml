@@ -4,7 +4,7 @@ metadata:
   name: airflow
 spec:
   entryPoints:
-    - web
+    - websecure
   routes:
     - match: Host(`airflow.k8sdatalab.com`)
       kind: Rule
