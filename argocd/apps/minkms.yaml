@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minkms-operator
+spec:
+  project: lab-system
+  source:
+    repoURL: https://helm.min.io/
+    chart: minkms-operator
+    targetRevision: 1.4.0
+    helm:
+      values: |
+        license: ""
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minkms-operator
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minkms
+spec:
+  project: lab-system
+  source:
+    repoURL: https://helm.min.io/
+    chart: minkms
+    targetRevision: 1.4.0
+    helm:
+      values: |
+        minkms:
+          image:
+            repository: quay.io/minio/aistor/minkms
+            tag: RELEASE.2025-11-12T19-14-51Z
+            pullPolicy: IfNotPresent
+          hsm:
+            key: "hsm:aes256:VF40XEo1v8uXrtvyIEJjh4wygGkSC4UdSFnvqJH0wG4="
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minkms
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
