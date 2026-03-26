@@ -1,0 +1,15 @@
+apiVersion: v2
+appVersion: v20260318173617.0.0
+description: Helm chart for MinIO AIStor Key Manager operator
+home: https://min.io
+icon: https://helm.min.io/logo.png
+keywords:
+- Key Management
+maintainers:
+- email: dev@minio.io
+  name: MinIO, Inc
+name: minkms-operator
+sources:
+- https://min.io/product/aistor/key-management-server
+type: application
+version: 1.4.0

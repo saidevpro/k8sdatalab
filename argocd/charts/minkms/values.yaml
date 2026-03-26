@@ -1,0 +1,232 @@
+# Following annotations/labels are applied to all resources created by the Helm chart
+annotations: {}
+labels: {}
+
+# Allow to override the namespace for all resources
+#namespaceOverride: "test"
+
+# The Helm chart will try to auto-detect OpenShift. If it cannot detect OpenShift
+# (i.e. when running helm template), then it will default to false. You can
+# override this setting to force OpenShift mode.
+#forceOpenShift: true
+
+###
+# Root key for MinKMS
+minkms:
+  ###
+  # The Key Manager name
+  #
+  # When the key manager name is not specified, the chart will use the release name
+  # as the key manager name.
+  #name: mykms
+  ###
+  # Specify the container image to use.
+  # ``image.tag``
+  # For example, the following sets the image to the ``quay.io/minio/aistor/minkms`` repo and the RELEASE.2025-03-24T19-33-06Z tag.
+  # The container pulls the image if not already present:
+  #
+  # .. code-block:: yaml
+  #
+  #    image:
+  #       repository: quay.io/minio/aistor/minkms
+  #       tag: RELEASE.2025-03-24T19-33-06Z
+  #       pullPolicy: IfNotPresent
+  #
+  # The chart also supports specifying an image based on digest value:
+  #
+  # .. code-block:: yaml
+  #
+  #    image:
+  #       repository: quay.io/minio/aistor/minkms@sha256
+  #       digest: 2ebef198955b802aae9fc2b7789d1d3073e9d1d05c8b70d702aeef7d064a9e56
+  #       pullPolicy: IfNotPresent
+  #
+  #
+  image: {}
+  #   repository: quay.io/minio/aistor/minkms
+  #   tag: RELEASE.2025-03-24T19-33-06Z
+  #   pullPolicy: IfNotPresent
+  ###
+  #
+  # An array of Kubernetes secrets to use for pulling images from a private ``image.repository``.
+  # Only one array element is supported at this time.
+  imagePullSecret: {}
+
+  ###
+  # The Kubernetes secret name that contains MinKMS configuration file
+  # The secret is expected to have a key named server-config.yaml that holds the configuration
+  # Key Manager cluster on-disk state can be sealed/unsealed using either a Soft HSM (static key stored in HSM secret),
+  # Vault, or another Key Manager cluster (minkms).
+  # Multiple HSMs can be used to prevent outages and reduce the risk of data loss. If only a single HSM is used,
+  # the Key Manager cluster state can only be unsealed if and when this HSM is available.
+  configuration:
+    #name: mykms-server-config
+    existingSecret: false
+    #hsm:
+    #  minio:
+    #    minkms:
+    #      server:
+    #        - hsm-minkms.ns.svc.cluster.local:7373      # Server addresses
+    #      enclave: my-hsm-enclave                       # Name of the enclave on the MinKMS HSM cluster containing the seal/unseal key.
+    #      key: sse-root-key                             # Name of the key used for sealing/unsealing the on-disk state.
+    #      auth:
+    #        key: k1:pMhutEWtChHgFYcQuy6V7NwuHTA0g59QDFrR9YpQY74 # API key for accessing the seal/unseal key within the enclave.
+    #
+    #  hashicorp:
+    #    vault:
+    #      server: https://vault-hsm.vault.svc.cluster.local:8200  # Service endpoint
+    #      transit:
+    #        key: my-transit-key                                   # The transit key used to seal/unseal MinKMS state.
+    #        path: transit/                                        # The transit engine mount path.
+    #      approle:
+    #        path: approle                                         # The approle mount path.
+    #        id: 6e2fe00b-0507-6287-fd6c-fc000763301f              # The approle role ID.
+    #        secret: 9a2c9dec-53ce-47d3-7a40-fb0735d0e0ef          # The approle secret ID - NOT the secret accessor ID.
+
+  hsm:
+    #name: mykms-secret
+    existingSecret: false
+    #
+    # Generate key using the `docker run quay.io/minio/aistor/minkms:latest --soft-hsm` command
+    #
+    # IMPORTANT: This default value cannot be used and should be replaced if it is desired to use an HSM static key.
+    #            Changing or loosing the HSM key causes data loss of the entire Key Manager deployment.
+    #            Since Key Manager maintains encryption keys for its client applications, all data encrypted by
+    #            these applications is also lost in such a case.
+    #key: "hsm:aes256:????????????????????????????????????????????"
+
+  apikey:
+    #name: mykms-apikey-secret
+    existingSecret: false
+    #
+    # Generate first temporal HSM key using the `docker run quay.io/minio/aistor/minkms:latest --soft-hsm`
+    # command and then derive API key with `docker run quay.io/minio/aistor/minkms:latest identity <HSM-key>` command
+    #
+    # IMPORTANT: This default value is not intended for use and must be replaced if you want to apply a
+    #            custom API key. If no API key is defined here, then Key Manager Operator will create
+    #            an API key secret for you. This API key can be rotated and it can be recreated without
+    #            loosing data.
+    #key: "k1:???????????????????????????????????????????"
+
+  affinity:
+    nodeAffinity: {}
+    podAffinity: {}
+    podAntiAffinity: {}
+
+  annotations: {}
+
+  ###
+  # Configures external certificate settings for the Key Manager.
+  certificates:
+    disableAutoCert: false
+    ###
+    # Specify an array of Kubernetes TLS secrets, where each entry corresponds to a secret the TLS private key and public certificate pair.
+    #
+    # This is used by MinIO to verify TLS connections from clients using those CAs
+    # If you omit this and have clients using TLS certificates minted by an external CA, those connections may fail with warnings around certificate verification.
+    # See `ObjectStore CRD: ObjectStoreSpec <https://docs.min.io/enterprise/aistor-object-store/reference/kubernetes/aistor-crd-v1/#objectstorespec>`__.
+    certConfig: {}
+      # commonName: ...
+      # dnsNames:
+      # - "..."
+      # - "..."
+      # organizationName:
+      # - "..."
+      # - "..."
+    ###
+    # externalCaCertSecret Allows MinKMS pods to verify client certificates signed by a Certificate Authority not in the default pod's trust store.
+    #
+    # If the ObjectStore uses custom or user-controlled TLS certificates, you *must* provide the CA for those certificates here
+    # externalCaCertSecret:
+    # - name: external-ca-secret-name
+    #   type: kubernetes.io/tls
+    # - "..."
+    # externalClientCertSecrets is the secret storing the KMS server certificate if `disableAutoCert: true` and want to provide an externally generated TLS certificate.
+    #
+    # You must pass the CA used to sign these certificates to clients like the Object Store to allow for TLS validation during connection.
+    # externalClientCertSecrets:
+    # - name: keymanger-server-secret
+    #   type: kubernetes.io/tls
+
+  # containerSecurityContext:
+  #   runAsUser: 1000
+  #   runAsGroup: 1000
+  #   runAsNonRoot: true
+  #   allowPrivilegeEscalation: false
+  #   capabilities:
+  #     drop:
+  #       - ALL
+  #   seccompProfile:
+  #     type: RuntimeDefault
+
+  # securityContext:
+  #   runAsUser: 1000
+  #   runAsGroup: 1000
+  #   runAsNonRoot: true
+  #   fsGroup: 1000
+
+  ###
+  # An array of `Initialization Containers <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`__ to initialize the Key Manager pods.
+  #
+  # All initialization containers should be run to completion before the Key Manager pod starts.
+  initContainers: []
+
+  # labels: { }
+  # serviceAccountName: ""
+  # nodeSelector: { }
+
+  ###
+  # The `PodManagement <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#pod-management-policy>`__ policy for Key Manager pods.
+  # Can be "OrderedReady" or "Parallel"
+  podManagementPolicy: Parallel
+
+  ###
+  # PriorityClassName indicates the Pod priority and hence importance of a Pod relative to other Pods.
+  # Refer Kubernetes documentation for details https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass/
+  priorityClassName: ""
+
+  replicas: 3
+  # resources: { }
+  # runtimeClassName: ""
+  # schedulerName: ""
+  service: {}
+    # name: mykms-service
+    # annotations: {}
+    # labels: {}
+    # nodePort: 31002
+    # serviceType: NodePort
+    # type: NodePort
+    # serviceExternalTrafficPolicy: Local
+
+  ###
+  # The `Kubernetes Service Account <https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/>`__ associated with the Object Store.
+  serviceAccountName: ""
+
+  sideCars: {}
+    # containers: []
+    # resources: {}
+    # volumeClaimTemplates: []
+    # volumes: []
+
+  # tolerations: []
+  # topologySpreadConstraints: {}
+
+  ###
+  # volumeClaimTemplate is used to create a PersistentVolumeClaim for the Key Manager pods.
+  # The amount of storage requested is specified in the `resources.requests.storage` field
+  # The default value of '25Mib' should meet the requirements of reasonable production workloads.
+  # MinKMS may require more storage in workloads with a large number
+  # of enclaves and master keys. You can use the following formula to
+  # roughly estimate required storage:
+  # ( N_enclaves * 200 ) + ( N_keys * 200 ) + ( 64 * 1024 ) = total number of bytes
+  volumeClaimTemplate:
+    metadata:
+      name: mykms-volume
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 25Mi
+
+extraResources: []

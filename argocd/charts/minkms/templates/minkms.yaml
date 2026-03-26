@@ -1,0 +1,134 @@
+{{- with .Values.minkms }}
+apiVersion: minkms.min.io/v1alpha1
+kind: MinKMS
+metadata:
+  name: {{ .name | default $.Release.Name | quote }}
+  namespace: {{ $.Values.namespaceOverride | default $.Release.Namespace | quote }}
+  {{- with $.Values.labels }}
+  labels:
+    {{ . | toYaml | nindent 4 }}
+  {{- end }}
+  {{- with $.Values.annotations }}
+  annotations:
+    {{ . | toYaml | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .image }}
+  image: "{{ .repository }}:{{ .digest | default .tag }}"
+  imagePullPolicy: {{ .pullPolicy | default "IfNotPresent" }}
+  {{- end }}
+  {{- if dig "imagePullSecret" "name" "" . }}
+  imagePullSecret:
+    name: {{ dig "imagePullSecret" "name" "" . }}
+  {{- end }}
+  configuration:
+    name: {{ .configuration.name | default (printf "%s-configuration" (.name | default $.Release.Name)) | quote }}
+  apiKeySecret:
+    name: {{ .apikey.name | default (printf "%s-apikey" (.name | default $.Release.Name)) | quote }}
+  {{- with .certificates }}
+  certificates:
+    {{- with .certConfig }}
+    certConfig:
+      {{- with .commonName }}
+      commonName: {{ . }}
+      {{- end }}
+      {{- with .dnsNames }}
+      dnsNames:
+        {{- range . }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- with .organizationName }}
+      organizationName:
+        {{- range . }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    disableAutoCert: {{ .disableAutoCert }}
+    {{- with .externalCaCertSecret }}
+    externalCaCertSecret: {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .externalClientCertSecrets }}
+    externalClientCertSecrets: {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+
+  {{- with .containerSecurityContext }}
+  containerSecurityContext: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .securityContext }}
+  securityContext: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- if and .hsm.key (ne .hsm.key "hsm:aes256:????????????????????????????????????????????") }}
+  hsmSecret:
+    name: {{ .hsm.name | default (printf "%s-hsm" (.name | default $.Release.Name)) | quote }}
+  {{- end }}
+
+  {{- with .initContainers }}
+  initContainers: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .labels }}
+  labels: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .nodeSelector }}
+  nodeSelector: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .podManagementPolicy }}
+  podManagementPolicy: {{ . }}
+  {{- end }}
+
+  {{- with .priorityClassName }}
+  priorityClassName: {{ . }}
+  {{- end }}
+
+  {{- with .replicas }}
+  replicas: {{ . }}
+  {{- end }}
+
+  {{- with .resources }}
+  resources: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .runtimeClassName }}
+  runtimeClassName: {{ . }}
+  {{- end }}
+
+  {{- with .schedulerName }}
+  schedulerName: {{ . }}
+  {{- end }}
+
+  {{- with .service }}
+  service: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .serviceAccountName }}
+  serviceAccountName: {{ . }}
+  {{- end }}
+
+  {{- with .sideCars }}
+  sideCars: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .tolerations }}
+  tolerations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .topologySpreadConstraints }}
+  topologySpreadConstraints: {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range . }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  volumeClaimTemplate: {{- toYaml .volumeClaimTemplate | nindent 4 }}
+{{- end }}

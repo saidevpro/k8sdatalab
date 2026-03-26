@@ -1,0 +1,39 @@
+Thank you for installing AIStor Operators {{ .Chart.AppVersion }}. Your release
+is named "{{ .Release.Name }}".
+
+The following operators have been installed:
+{{- range $op, $int := include "aistor.operators" . | fromYaml }}
+{{- $emptyObj := "{}" | fromJson -}}
+{{- $operators := $.Values.operators | default $emptyObj -}}
+{{- $opValue := index $operators $op | default $emptyObj }}
+{{- if not $opValue.disabled }}
+- {{ $op }}-operator
+{{- end }}
+{{- end }}
+{{ if $.Values.license | default $.Values.global.license }}
+A license has been installed.
+{{ if $.Values.global.license }}
+DEPRECATION: Make sure you set `.license` instead of `.global.license`. The last
+             field has been deprecated since June 2025.
+{{- end }}
+{{- else }}
+No license information was supplied, so the AIStor operators will fail to
+start. Create a secret named `minio-license` with a key named `minio.license`
+that holds the proper license. The license will automatically be picked up
+by the operators.
+{{- end }}
+
+Image list:
+{{- $image := include "aistor.resolveImage" (dict "name" "operator" "root" $.Values "val" $.Values) }}
+{{ printf "- operator: %s" $image }}
+{{- range $op, $int := include "aistor.operators" . | fromYaml }}
+{{- $emptyObj := "{}" | fromJson -}}
+{{- $operators := $.Values.operators | default $emptyObj -}}
+{{- $opValue := index $operators $op | default $emptyObj }}
+{{- if not $opValue.disabled }}
+{{- range $img := $int.images }}
+{{- $image := include "aistor.resolveImage" (dict "name" $img "root" $.Values "val" $.Values) }}
+{{ printf "- %s: %s" $img $image }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,33 @@
+{{- $kmsName := .Values.minkms.name | default $.Release.Name }}
+{{- $kmsNS := .Values.namespaceOverride | default $.Release.Namespace }}
+{{- $kmsURL := printf "https://%s-minkms.%s.svc.cluster.local:7373" $kmsName $kmsNS }}
+{{- $kubectl := "kubectl" }}
+{{- if include "aistor.isOpenShift" $ }}
+{{- $kubectl = "oc" }}
+{{- end }}
+
+The key manager is successfully installed and -once initialized- should be available
+from within the cluster on {{ $kmsURL }}. If you want to enable Key Manager with the
+object store, then perform the following steps:
+
+1. Obtain the admin API key for the object store:
+   docker run --rm quay.io/minio/aistor/minkms:latest identity {{ .Values.minkms.hsm.key }}
+
+2. Create an enclave dedicated for the object store:
+   {{ $kubectl }} exec -n {{ $kmsNS }} {{ $kmsName -}}-0 -- /minkms add-enclave --api-key <admin-API-key> <enclave-name>
+
+3. Create an administrator identity that is used by MinIO to manage the keys:
+   {{ $kubectl }} exec -n {{ $kmsNS }} {{ $kmsName -}}-0 -- /minkms add-identity --api-key <admin-API-key> --enclave <enclave-name> --admin
+
+   This step will return both the API key and the identity. Make sure you write down
+   the API key, because it will only be displayed during creation and cannot be obtained
+   later anymore. This API key will be used later and is refered to `<enclave-API-key>`.
+
+4. Create a default key that is used to encrypt the data (server side encryption key)
+   {{ $kubectl }} exec -n {{ $kmsNS }} {{ $kmsName -}}-0 -- /minkms add-key --api-key <admin-API-key> --enclave <enclave-name> <sse-key-name>
+
+Then create the object-store that holds the following environment variables:
+- MINIO_KMS_SERVER: {{ $kmsURL }}
+- MINIO_KMS_ENCLAVE: <enclave-name>       (this is the enclave created in step 2)
+- MINIO_KMS_API_KEY: <enclave-API-key>    (this is not the admin API key, but the enclave API key from step 3)
+- MINIO_KMS_SSE_KEY: <sse-key-name>       (this is the SSE key created in step 4)
