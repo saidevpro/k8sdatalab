@@ -1,0 +1,251 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+---
+# Grant the webhook permission to read the ConfigMap containing the Kubernetes
+# apiserver's requestheader-ca-certificate.
+# This ConfigMap is automatically created by the Kubernetes apiserver.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:webhook-authentication-reader
+  namespace: kube-system
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "cert-manager-webhook-ovh.fullname" . }}
+    namespace: {{ .Release.Namespace | quote }}
+---
+# apiserver gets the auth-delegator role to delegate auth decisions to
+# the core apiserver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:auth-delegator
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "cert-manager-webhook-ovh.fullname" . }}
+    namespace: {{ .Release.Namespace | quote }}
+---
+# Grant cert-manager permission to validate using our apiserver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:domain-solver
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+rules:
+  - apiGroups:
+      - {{ .Values.groupName }}
+    resources:
+      - '*'
+    verbs:
+      - 'create'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:domain-solver
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:domain-solver
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ .Values.certManager.serviceAccountName | default "cert-manager" }}
+    namespace: {{ .Values.certManager.namespace | quote | default "cert-manager" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:flowcontrol-solver
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+rules:
+  - apiGroups:
+      - "flowcontrol.apiserver.k8s.io"
+    resources:
+      - 'prioritylevelconfigurations'
+      - 'flowschemas'
+    verbs:
+      - 'list'
+      - 'watch'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:flowcontrol-solver
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cert-manager-webhook-ovh.fullname" . }}:flowcontrol-solver
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "cert-manager-webhook-ovh.fullname" . }}
+    namespace: {{ .Release.Namespace | quote }}
+---
+# Grant the webhook permission to read the secrets containing OVH credentials
+{{- if gt (include "cert-manager-webhook-ovh.isIssuerToCreate" $ | int ) 0 }}
+  {{- $secretsList := list }}
+  {{- range $.Values.issuers }}
+    {{- if .create }}
+      {{- if eq .kind "ClusterIssuer" }}
+        {{- if eq (include "cert-manager-webhook-ovh.isOvhAuthenticationAvail" .) "true" }}
+          {{- $secretsList = append $secretsList (printf "%s-ovh-credentials" .name) | uniq }}
+        {{- end }}
+        {{- if eq (include "cert-manager-webhook-ovh.isOvhAuthenticationRefAvail" .) "true" }}
+          {{- if eq .ovhAuthenticationMethod "application" }}
+            {{- with .ovhAuthenticationRef }}
+              {{- $secretsList = append $secretsList .applicationKeyRef.name }}
+              {{- $secretsList = append $secretsList .applicationSecretRef.name }}
+              {{- $secretsList = append $secretsList .applicationConsumerKeyRef.name }}
+            {{- end }}
+          {{- else if eq .ovhAuthenticationMethod "oauth2" }}
+            {{- with .ovhAuthenticationRef }}
+              {{- $secretsList = append $secretsList .oauth2ClientIDRef.name }}
+              {{- $secretsList = append $secretsList .oauth2ClientSecretRef.name }}
+            {{- end }}
+          {{- end }}
+        {{- end }}{{/* end if isOvhAuthenticationRefAvail */}}
+      {{- end }}{{/* end if eq .kind "ClusterIssuer" */}}
+    {{- end }}{{/* end if .create */}}
+  {{- end }}{{/* end range */}}
+  {{- if len $secretsList }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{ $.Values.rbac.roleType | default "Role" }}
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}:secret-reader
+  namespace: {{ $.Release.Namespace | quote }}
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch"]
+  resourceNames:
+    {{- $secretsList = $secretsList | uniq | sortAlpha }}
+    {{- range $secretsList }}
+    - {{ . | quote }}
+    {{- end }}
+---
+  {{- end }}
+  {{- if len $secretsList }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}:secret-reader
+  namespace: {{ $.Release.Namespace | quote }}
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{ $.Values.rbac.roleType | default "Role" }}
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}:secret-reader
+subjects:
+- apiGroup: ""
+  kind: ServiceAccount
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}
+  namespace: {{ .Release.Namespace | quote }}
+---
+  {{- end }}
+{{- end }}
+# Grant the webhook permission to read the secrets containing OVH credentials for Namespaced Issuers
+{{- if gt (include "cert-manager-webhook-ovh.isIssuerToCreate" $ | int ) 0 }}
+  {{- $namespaceList := list }}
+  {{- range $.Values.issuers }}
+    {{- if .create }}
+      {{- if eq .kind "Issuer" }}
+        {{- $namespaceList = append $namespaceList .namespace }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- $namespaceList = $namespaceList | uniq | sortAlpha }}
+  {{- range $namespaceList }}
+    {{- $namespace := . }}
+    {{- $secretsList := list }}
+    {{- range $.Values.issuers }}
+      {{- if .create }}
+        {{- if eq .kind "Issuer" }}
+          {{- if eq $namespace .namespace }}
+            {{- if eq (include "cert-manager-webhook-ovh.isOvhAuthenticationAvail" .) "true" }}
+              {{- $secretsList = append $secretsList (printf "%s-ovh-credentials" .name) }}
+            {{- end }}
+            {{- if eq (include "cert-manager-webhook-ovh.isOvhAuthenticationRefAvail" .) "true" }}
+              {{- if eq .ovhAuthenticationMethod "application" }}
+                {{- with .ovhAuthenticationRef }}
+                  {{- $secretsList = append $secretsList .applicationKeyRef.name }}
+                  {{- $secretsList = append $secretsList .applicationSecretRef.name }}
+                  {{- $secretsList = append $secretsList .applicationConsumerKeyRef.name }}
+                {{- end }}
+              {{- else if eq .ovhAuthenticationMethod "oauth2" }}
+                {{- with .ovhAuthenticationRef }}
+                  {{- $secretsList = append $secretsList .oauth2ClientIDRef.name }}
+                  {{- $secretsList = append $secretsList .oauth2ClientSecretRef.name }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+        {{- end }}{{/* end if eq .kind "Issuer" */}}
+      {{- end }}{{/* end if .create */}}
+    {{- end }}{{/* end range $.Values.issuers */}}
+    {{- if len $secretsList }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}:secret-reader
+  namespace: {{ $namespace | quote }}
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch"]
+  resourceNames:
+      {{- $secretsList = $secretsList | uniq | sortAlpha }}
+      {{- range $secretsList }}
+    - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}:secret-reader
+  namespace: {{ $namespace | quote }}
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}:secret-reader
+subjects:
+- apiGroup: ""
+  kind: ServiceAccount
+  name: {{ include "cert-manager-webhook-ovh.fullname" $ }}
+  namespace: {{ $.Release.Namespace | quote }}
+---
+  {{- end }}{{/* end $namespaceList */}}
+{{- end }}

@@ -1,0 +1,84 @@
+{{- range $.Values.issuers }}
+  {{- if .create }}
+apiVersion: cert-manager.io/v1
+kind: {{ .kind }}
+metadata:
+  labels:
+    {{- include "cert-manager-webhook-ovh.labels" $ | nindent 4 }}
+  name: {{ .name | quote }}
+  {{- if eq .kind "Issuer" }}
+  namespace: {{ .namespace | quote }}
+  {{- end }}
+spec:
+  acme:
+    server: {{ .acmeServerUrl | default "https://acme-v02.api.letsencrypt.org/directory" | quote }}
+    {{- if .email }}
+    email: {{ .email | quote }}
+    {{- end }}
+    {{- if .profile }}
+    profile: {{ .profile | quote }}
+    {{- end }}
+    {{- if eq (include "cert-manager-webhook-ovh.isExternalAccountBindingAvail" .) "true" }}
+    externalAccountBinding:
+      keyID: {{ .externalAccountBinding.keyID | quote }}
+      keySecretRef:
+        name: {{ .externalAccountBinding.keySecretRef.name | quote }}
+        key: {{ .externalAccountBinding.keySecretRef.key | quote }}
+    {{- end}}
+    {{- if .disableAccountKeyGeneration }}
+    disableAccountKeyGeneration: {{ .disableAccountKeyGeneration }}
+    {{- end}}
+    privateKeySecretRef:
+      name: {{ printf "%s-account-key" .name | quote }}
+    solvers:
+    - dns01:
+        cnameStrategy: {{ .cnameStrategy | default "None" | quote }}
+        webhook:
+          solverName: ovh
+          groupName: {{ $.Values.groupName | quote }}
+          config:
+            endpoint: {{ .ovhEndpointName | quote }}
+            authenticationMethod: {{ .ovhAuthenticationMethod | quote }}
+            {{- if eq (include "cert-manager-webhook-ovh.isOvhAuthenticationAvail" .) "true" }}{{- /* direct authentication */ -}}
+            {{- if eq .ovhAuthenticationMethod "application" }}
+            applicationKeyRef:
+              name: {{ printf "%s-ovh-credentials" .name }}
+              key: "applicationKey"
+            applicationSecretRef:
+              name: {{ printf "%s-ovh-credentials" .name }}
+              key: "applicationSecret"
+            applicationConsumerKeyRef:
+              name: {{ printf "%s-ovh-credentials" .name }}
+              key: "applicationConsumerKey"
+            {{- else if eq .ovhAuthenticationMethod "oauth2" }}
+            oauth2ClientIDRef:
+              name: {{ printf "%s-ovh-credentials" .name }}
+              key: "oauth2ClientID"
+            oauth2ClientSecretRef:
+              name: {{ printf "%s-ovh-credentials" .name }}
+              key: "oauth2ClientSecret"
+            {{- end }}
+            {{- end }}
+            {{- if eq (include "cert-manager-webhook-ovh.isOvhAuthenticationRefAvail" .) "true" }}{{- /* reference authentication */ -}}
+            {{- if eq .ovhAuthenticationMethod "application" }}
+            applicationKeyRef:
+              name: {{ .ovhAuthenticationRef.applicationKeyRef.name }}
+              key: {{ .ovhAuthenticationRef.applicationKeyRef.key }}
+            applicationSecretRef:
+              name: {{ .ovhAuthenticationRef.applicationSecretRef.name }}
+              key: {{ .ovhAuthenticationRef.applicationSecretRef.key }}
+            applicationConsumerKeyRef:
+              name: {{ .ovhAuthenticationRef.applicationConsumerKeyRef.name }}
+              key: {{ .ovhAuthenticationRef.applicationConsumerKeyRef.key }}
+            {{- else if eq .ovhAuthenticationMethod "oauth2" }}
+            oauth2ClientIDRef:
+              name: {{ .ovhAuthenticationRef.oauth2ClientIDRef.name }}
+              key: {{ .ovhAuthenticationRef.oauth2ClientIDRef.key }}
+            oauth2ClientSecretRef:
+              name: {{ .ovhAuthenticationRef.oauth2ClientSecretRef.name }}
+              key: {{ .ovhAuthenticationRef.oauth2ClientSecretRef.key }}
+            {{- end }}
+            {{- end }}{{/* end if isOvhAuthenticationRefAvail */}}
+---
+  {{- end }}{{/* end if .create */}}
+{{- end }}{{/* end range */}}
