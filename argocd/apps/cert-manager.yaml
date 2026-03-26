@@ -13,7 +13,7 @@ spec:
         - ../../values/cert-manager-values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: lab-system
+    namespace: cert-manager
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
