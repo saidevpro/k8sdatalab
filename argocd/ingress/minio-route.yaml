@@ -28,4 +28,4 @@ spec:
         - name: minio
           port: 9000
   tls:
-    certResolver: letsencrypt
+    secretName: wildcard-tls

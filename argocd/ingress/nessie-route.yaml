@@ -12,4 +12,4 @@ spec:
         - name: nessie
           port: 19120
   tls:
-    certResolver: letsencrypt
+    secretName: wildcard-tls
