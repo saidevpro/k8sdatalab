@@ -30,8 +30,9 @@ spec:
     path: argocd/charts/minkms
     helm:
       values: |
-        hsm:
-          key: "hsm:aes256:VF40XEo1v8uXrtvyIEJjh4wygGkSC4UdSFnvqJH0wG4="
+        minkms:
+          hsm:
+            key: "hsm:aes256:VF40XEo1v8uXrtvyIEJjh4wygGkSC4UdSFnvqJH0wG4="
   destination:
     server: https://kubernetes.default.svc
     namespace: minkms
