@@ -69,9 +69,9 @@ createUserJob:
   useHelmHooks: false
   defaultUser:
     role: Admin
-    username: admin
+    username: said
     email: saidevproject@gmail.com
-    firstName: admin
+    firstName: said
     lastName: dev
     password: "Gfz#Klu8n9VC4c7T92D"
 
