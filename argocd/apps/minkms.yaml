@@ -13,7 +13,7 @@ spec:
         license: ""
   destination:
     server: https://kubernetes.default.svc
-    namespace: minkms-operator
+    namespace: minkms
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
@@ -31,6 +31,10 @@ spec:
     helm:
       values: |
         minkms:
+          image:
+            repository: quay.io/minio/aistor/minkms
+            tag:  RELEASE.2025-11-12T19-14-51Z
+            pullPolicy: IfNotPresent
           hsm:
             key: "hsm:aes256:VF40XEo1v8uXrtvyIEJjh4wygGkSC4UdSFnvqJH0wG4="
   destination:
