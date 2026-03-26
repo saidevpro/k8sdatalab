@@ -15,7 +15,7 @@ spec:
             solverName: ovh
             config:
               endpoint: ovh-eu
-              authMethod: application
+              authenticationMethod: application
               applicationKeySecretRef:
                 name: ovh-token-credentials
                 key: applicationKey
