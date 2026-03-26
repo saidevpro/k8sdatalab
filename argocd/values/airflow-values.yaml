@@ -71,7 +71,7 @@ createUserJob:
     role: Admin
     username: admin
     email: saidevproject@gmail.com
-    firstName: said
+    firstName: admin
     lastName: dev
     password: "Gfz#Klu8n9VC4c7T92D"
 
