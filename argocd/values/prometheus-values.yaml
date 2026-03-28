@@ -1,0 +1,51 @@
+# Grafana
+grafana:
+  enabled: true
+  adminPassword: y0sBJPt7cmN4
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 200m
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClassName: longhorn
+  ingress:
+    enabled: false
+
+# Prometheus
+prometheus:
+  enabled: true
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+
+# AlertManager
+alertmanager:
+  enabled: false
+
+# Désactiver les composants inutiles
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false

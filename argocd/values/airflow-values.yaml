@@ -1,6 +1,5 @@
 executor: KubernetesExecutor # ← chaque task = 1 pod k8s
 
-# Authentification UI
 webserverSecretKey: "ca40912fb2205b9fadc2d4174fb90f331bbcde09e0805da8503a2272b305b474"
 
 apiServer:
@@ -28,7 +27,6 @@ scheduler:
       memory: 1Gi
       cpu: 500m
 
-# Base de données PostgreSQL
 data:
   metadataConnection:
     user: airflow
@@ -38,22 +36,18 @@ data:
     db: airflow
     protocol: postgresql
 
-# Désactiver PostgreSQL embarqué
 postgresql:
   enabled: false
 
-# Redis pour CeleryExecutor (pas nécessaire avec KubernetesExecutor)
 redis:
   enabled: false
 
-# Persistent storage pour les logs
 logs:
   persistence:
     enabled: false
     size: 2Gi
     storageClassName: longhorn
 
-# DAGs depuis Git
 dags:
   gitSync:
     enabled: true
@@ -63,7 +57,6 @@ dags:
     period: 60s
     credentialsSecret: airflow-git-sync-credentials
 
-# Créer un user admin
 createUserJob:
   enabled: false
   useHelmHooks: false
@@ -83,7 +76,6 @@ migrateDatabaseJob:
       memory: 256Mi
       cpu: 250m
 
-# Désactiver les exemples
 env:
   - name: AIRFLOW__CORE__LOAD_EXAMPLES
     value: "false"
