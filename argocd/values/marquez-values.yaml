@@ -27,5 +27,5 @@ marquez:
     host: postgresql-airflow.lab-system.svc.cluster.local
     port: 5432
     name: marquez
-    user: airflow
+    user: marquez
     password: 2j28gK5BL28d
