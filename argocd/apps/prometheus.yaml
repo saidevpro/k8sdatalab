@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+spec:
+  project: lab-system
+  source:
+    repoURL: https://github.com/saidevpro/k8sdatalab
+    targetRevision: main
+    path: argocd/charts/kube-prometheus-stack
+    helm:
+      valueFiles:
+        - ../../values/prometheus-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: lab-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
