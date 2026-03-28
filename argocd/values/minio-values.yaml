@@ -23,6 +23,7 @@ environment:
   MINIO_KMS_KES_ENDPOINT: "https://minkms-minkms.minkms.svc.cluster.local:7373"
   MINIO_KMS_KES_API_KEY: "k1:2muOtixfyiu_HlJfXEc6U636dWqux425zbMPaJldU3U"
   MINIO_KMS_KES_KEY_NAME: "minio-default-key"
+  MINIO_KMS_KES_TLS_SKIP_VERIFY: "on"
 
 resources:
   requests:
