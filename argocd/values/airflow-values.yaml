@@ -89,3 +89,13 @@ env:
     value: "false"
   - name: FORWARDED_ALLOW_IPS
     value: "*"
+
+extraPipPackages:
+  - apache-airflow-providers-openlineage
+
+extraEnv: |-
+  - name: AIRFLOW__OPENLINEAGE__NAMESPACE
+    value: k8sdatalab
+  - name: AIRFLOW__OPENLINEAGE__TRANSPORT
+    value: >-
+      {"type":"http","url":"http://marquez.marquez.svc.cluster.local","endpoint":"api/v1/lineage"}
