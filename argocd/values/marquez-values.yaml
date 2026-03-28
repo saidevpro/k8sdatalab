@@ -1,0 +1,31 @@
+replicaCount: 1
+
+marquez:
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+web:
+  enabled: true
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+postgresql:
+  enabled: false
+
+marquez:
+  db:
+    host: postgresql-airflow.lab-system.svc.cluster.local
+    port: 5432
+    name: marquez
+    user: airflow
+    password: 2j28gK5BL28d
