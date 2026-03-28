@@ -65,7 +65,7 @@ dags:
 
 # Créer un user admin
 createUserJob:
-  enabled: true
+  enabled: false
   useHelmHooks: false
   defaultUser:
     role: Admin

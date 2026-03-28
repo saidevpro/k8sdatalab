@@ -2,6 +2,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: marquez-api
+  namespace: marquez
 spec:
   entryPoints:
     - websecure
@@ -11,7 +12,6 @@ spec:
       services:
         - name: marquez
           port: 80
-          namespace: marquez
   tls:
     secretName: wildcard-tls
 ---
@@ -19,6 +19,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: marquez-ui
+  namespace: marquez
 spec:
   entryPoints:
     - websecure
@@ -28,6 +29,5 @@ spec:
       services:
         - name: marquez-web
           port: 80
-          namespace: marquez
   tls:
     secretName: wildcard-tls
