@@ -4,7 +4,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-# Outils de base
 RUN apt-get update && apt-get install -y \
     locales \
     curl \
@@ -23,20 +22,32 @@ RUN apt-get update && apt-get install -y \
     && locale-gen en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
-# Installer kubectl
+# Install Kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
     && chmod +x kubectl \
     && mv kubectl /usr/local/bin/
 
-# Installer Helm
+# Install ArgoCD CLI
+RUN curl -sSL -o /usr/local/bin/argocd \
+    https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
+    && chmod +x /usr/local/bin/argocd
+
+# Install mc (MinIO Client)
+RUN curl -sSL -o /usr/local/bin/mc \
+    https://dl.min.io/client/mc/release/linux-amd64/mc \
+    && chmod +x /usr/local/bin/mc
+
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# Installer Ansible
+# Install Ansible
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --break-system-packages -r /tmp/requirements.txt
 
 # Alias utiles
 RUN echo "alias k=kubectl" >> /root/.bashrc \
-    && echo "alias ll='ls -la'" >> /root/.bashrc
+    && echo "alias ll='ls -la'" >> /root/.bashrc \
+    && echo "alias argocd='agc'" >> /root/.bashrc
+
+ENV KUBECONFIG=/workspace/kubeconfig.yaml
 
 WORKDIR /workspace
