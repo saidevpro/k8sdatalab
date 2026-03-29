@@ -1,0 +1,6 @@
+ansible==10.6.0
+ansible-lint
+kubernetes
+boto3
+openshift
+passlib

@@ -1,0 +1,25 @@
+{
+  "name": "k8sdatalab DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mounts": [
+    "source=${localEnv:USERPROFILE}\\.ssh,target=/root/.ssh,type=bind,consistency=cached"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "extensions": [
+    "redhat.ansible",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "ms-python.python",
+    "timonwong.shellcheck",
+    "foxundermoon.shell-format"
+  ],
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "ansible.python.interpreterPath": "/usr/bin/python3"
+  },
+  "remoteUser": "root",
+  "postCreateCommand": "echo '✅ DevContainer prêt !'"
+}
