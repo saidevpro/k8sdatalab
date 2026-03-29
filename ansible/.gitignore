@@ -1,0 +1,17 @@
+.vault-password
+*.vault
+group_vars/all/secrets.yml
+
+# Fichiers temporaires Ansible
+*.retry
+.ansible/
+
+# SSH
+*.pem
+id_rsa
+id_rsa.pub
+
+# Logs
+*.log
+
+kubeconfig.yaml

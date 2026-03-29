@@ -1,0 +1,123 @@
+---
+- name: Setup all nodes
+  hosts: all
+  become: true
+
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  tasks:
+
+    - name: Set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Update /etc/hosts with hostname
+      lineinfile:
+        path: /etc/hosts
+        line: "127.0.0.1 {{ inventory_hostname }}"
+        state: present
+
+    - name: Create user dev
+      user:
+        name: "{{ dev_user }}"
+        password: "{{ dev_password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    - name: Add dev to sudo group
+      user:
+        name: "{{ dev_user }}"
+        groups: sudo
+        append: yes
+
+    - name: Allow dev to use sudo without password
+      lineinfile:
+        path: /etc/sudoers
+        line: "{{ dev_user }} ALL=(ALL) NOPASSWD:ALL"
+        validate: visudo -cf %s
+        state: present
+
+    - name: Create .ssh directory for dev
+      file:
+        path: /home/{{ dev_user }}/.ssh
+        state: directory
+        owner: "{{ dev_user }}"
+        group: "{{ dev_user }}"
+        mode: '0700'
+
+    - name: Copy root authorized_keys to dev
+      copy:
+        src: /root/.ssh/authorized_keys
+        dest: /home/{{ dev_user }}/.ssh/authorized_keys
+        owner: "{{ dev_user }}"
+        group: "{{ dev_user }}"
+        mode: '0600'
+        remote_src: yes
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - htop
+          - net-tools
+          - open-iscsi
+          - nfs-common
+        state: present
+
+    - name: Enable iscsid service (requis pour Longhorn)
+      systemd:
+        name: iscsid
+        enabled: yes
+        state: started
+
+    - name: Disable swap
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+    - name: Disable swap permanently
+      lineinfile:
+        path: /etc/fstab
+        regexp: '.*swap.*'
+        line: '# swap disabled'
+        state: present
+
+    - name: Load kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - br_netfilter
+        - overlay
+
+    - name: Persist kernel modules
+      copy:
+        content: |
+          br_netfilter
+          overlay
+        dest: /etc/modules-load.d/k3s.conf
+
+    - name: Configure sysctl for Kubernetes
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+        - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+        - { key: "net.ipv4.ip_forward", value: "1" }
+
+    - name: Print node setup complete
+      debug:
+        msg: "✅ {{ inventory_hostname }} configuré avec succès"
+        

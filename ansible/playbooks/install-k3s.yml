@@ -1,0 +1,134 @@
+---
+- name: Install k3s on Control Plane
+  hosts: controlplane
+  become: true
+
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  tasks:
+
+    - name: Install k3s server
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - server \
+          --node-ip={{ private_ip }} \
+          --node-external-ip={{ ansible_host }} \
+          --advertise-address={{ private_ip }} \
+          --tls-san={{ private_ip }} \
+          --tls-san={{ ansible_host }} \
+          --flannel-iface={{ flannel_iface }} \
+          --write-kubeconfig-mode=644
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s to be ready
+      wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+        timeout: 60
+
+    - name: Wait for k3s API to be available
+      wait_for:
+        host: "{{ private_ip }}"
+        port: 6443
+        timeout: 60
+
+    - name: Get k3s token
+      command: cat /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+
+    - name: Save token as fact
+      set_fact:
+        k3s_node_token: "{{ k3s_token.stdout }}"
+
+    - name: Taint control plane
+      command: >
+        kubectl taint node {{ inventory_hostname }}
+        node-role.kubernetes.io/control-plane=:NoSchedule
+        --overwrite
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      ignore_errors: yes
+
+    - name: Verify k3s is running
+      command: kubectl get nodes
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: nodes_output
+
+    - name: Print cluster nodes
+      debug:
+        msg: "{{ nodes_output.stdout }}"
+
+    - name: Print CP setup complete
+      debug:
+        msg: "✅ Control Plane {{ inventory_hostname }} ({{ private_ip }}) installé"
+
+- name: Install k3s on Workers
+  hosts: workers
+  become: true
+
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  tasks:
+
+    - name: Get token and URL from control plane
+      set_fact:
+        k3s_token: "{{ hostvars[groups['controlplane'][0]]['k3s_node_token'] }}"
+        k3s_url: "https://{{ hostvars[groups['controlplane'][0]]['private_ip'] }}:6443"
+
+    - name: Install k3s agent
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - agent \
+          --server={{ k3s_url }} \
+          --token={{ k3s_token }} \
+          --node-ip={{ private_ip }} \
+          --flannel-iface={{ flannel_iface }}
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+    - name: Verify k3s agent is running
+      systemd:
+        name: k3s-agent
+        state: started
+        enabled: yes
+
+    - name: Print worker joined
+      debug:
+        msg: "✅ {{ inventory_hostname }} ({{ private_ip }}) rejoint le cluster"
+
+- name: Verify cluster and fetch kubeconfig
+  hosts: controlplane
+  become: true
+
+  tasks:
+
+    - name: Wait for all workers to join
+      command: kubectl get nodes
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: all_nodes
+      until: all_nodes.stdout_lines | length > groups['workers'] | length
+      retries: 20
+      delay: 10
+
+    - name: Print final cluster status
+      debug:
+        msg: "{{ all_nodes.stdout }}"
+
+    - name: Copy kubeconfig locally
+      fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ../kubeconfig.yaml
+        flat: yes
+
+    - name: Fix kubeconfig IP
+      local_action:
+        module: replace
+        path: ../kubeconfig.yaml
+        regexp: '127.0.0.1'
+        replace: "{{ ansible_host }}"
+
+    - name: Print success
+      debug:
+        msg: "✅ Cluster prêt — kubeconfig disponible dans ansible/kubeconfig.yaml"
