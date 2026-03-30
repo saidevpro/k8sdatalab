@@ -13,7 +13,7 @@ spec:
         - ../../values/airflow-values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: lab-system
+    namespace: data-platform
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

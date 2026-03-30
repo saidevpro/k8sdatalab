@@ -7,11 +7,11 @@ grafana:
       memory: 256Mi
       cpu: 100m
     limits:
-      memory: 512Mi
+      memory: 2Gi
       cpu: 200m
   persistence:
     enabled: true
-    size: 2Gi
+    size: 10Gi
     storageClassName: longhorn
   ingress:
     enabled: false
@@ -26,7 +26,7 @@ prometheus:
         memory: 512Mi
         cpu: 250m
       limits:
-        memory: 1Gi
+        memory: 2Gi
         cpu: 500m
     storageSpec:
       volumeClaimTemplate:
@@ -36,7 +36,7 @@ prometheus:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 5Gi
+              storage: 10Gi
 
 # AlertManager
 alertmanager:

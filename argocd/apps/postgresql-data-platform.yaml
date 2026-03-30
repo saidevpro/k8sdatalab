@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: postgresql-airflow
+  name: postgresql-data-platform
 spec:
   project: lab-system
   source:
@@ -10,10 +10,10 @@ spec:
     path: argocd/charts/postgresql
     helm:
       valueFiles:
-        - ../../values/postgresql-airflow-values.yaml
+        - ../../values/postgresql-data-platform-values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: lab-system
+    namespace: data-platform
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

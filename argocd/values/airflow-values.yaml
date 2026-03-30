@@ -31,7 +31,7 @@ data:
   metadataConnection:
     user: airflow
     pass: "YJ$fF1&ndM"
-    host: postgresql-airflow.lab-system.svc.cluster.local
+    host: postgresql-data-platform.data-platform.svc.cluster.local
     port: 5432
     db: airflow
     protocol: postgresql

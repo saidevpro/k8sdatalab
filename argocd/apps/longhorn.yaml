@@ -15,7 +15,7 @@ spec:
         - ../../values/longhorn-values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: lab-system
+    namespace: infrastructure
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

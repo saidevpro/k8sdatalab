@@ -1,0 +1,33 @@
+auth:
+  postgresPassword: "cyKoZ1Cf5wONUdVV8FLrjCBuudSfc"
+
+primary:
+  initdb:
+    scripts:
+      init.sql: |
+        -- Create users
+        CREATE USER airflow WITH PASSWORD 'YJ$fF1&ndM';
+        CREATE USER marquez WITH PASSWORD '2j28gK5BL28d';
+        CREATE USER nessie WITH PASSWORD 'GZHs5dhB';
+
+        -- Create database
+        CREATE DATABASE airflow OWNER airflow;
+        CREATE DATABASE marquez OWNER marquez;
+        CREATE DATABASE nessie OWNER nessie;
+
+        -- Config priviledge
+        GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow;
+        GRANT ALL PRIVILEGES ON DATABASE marquez TO marquez;
+        GRANT ALL PRIVILEGES ON DATABASE nessie TO nessie;
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: longhorn

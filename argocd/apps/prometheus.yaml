@@ -15,7 +15,7 @@ spec:
         - ../../values/prometheus-values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: lab-system
+    namespace: observability
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

@@ -20,7 +20,7 @@ persistence:
   storageClass: "longhorn"
 
 environment:
-  MINIO_KMS_SERVER: "https://minkms-minkms.minkms.svc.cluster.local:7373"
+  MINIO_KMS_SERVER: "https://minkms-minkms.data-platform.svc.cluster.local:7373"
   MINIO_KMS_ENCLAVE: "minio"
   MINIO_KMS_SSE_KEY: "minio-default-key"
   MINIO_KMS_API_KEY: "k1:2muOtixfyiu_HlJfXEc6U636dWqux425zbMPaJldU3U"

@@ -46,7 +46,7 @@ RUN pip3 install --break-system-packages -r /tmp/requirements.txt
 # Alias utiles
 RUN echo "alias k=kubectl" >> /root/.bashrc \
     && echo "alias ll='ls -la'" >> /root/.bashrc \
-    && echo "alias argocd='agc'" >> /root/.bashrc
+    && echo "alias agc='argocd'" >> /root/.bashrc
 
 ENV KUBECONFIG=/workspace/kubeconfig.yaml
 
