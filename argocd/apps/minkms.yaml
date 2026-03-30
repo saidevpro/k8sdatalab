@@ -10,7 +10,7 @@ spec:
     path: argocd/charts/minkms-operator
     helm:
       values: |
-        license: ""
+        license: "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJhaWQiOjAsImNhcCI6MCwiaWF0IjoxLjc3NDU2MTk1MTQzNjQ1MDMzMWU5LCJpc3MiOiJzdWJuZXRAbWluLmlvIiwibGlkIjoiNWQ2ZjA2YjQtYWNiMy00N2RmLTk0MmEtOGNiYzk2ZjRhMGJiIiwib3JnIjoiIiwicGxhbiI6IkZSRUUiLCJzdWIiOiJzYWlkZXZwcm9qZWN0QGdtYWlsLmNvbSIsInRyaWFsIjpmYWxzZX0.7rGZ8E4TQ9h15hucMb7P7HCSnxjpC9tXZhGqFkEgOYCimyO2TcPxGum9k1z5Lmx37q75lpdgJQXihPgqKW88AfKZpoMnCaD8VcOZus-cD8cQ5rp7Qc7u1HWvW7jHUfRA"
   destination:
     server: https://kubernetes.default.svc
     namespace: data-platform
