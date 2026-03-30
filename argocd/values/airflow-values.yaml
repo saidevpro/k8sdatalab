@@ -19,6 +19,11 @@ webserver:
       cpu: 500m
 
 scheduler:
+  startupProbe:
+    failureThreshold: 30   
+    periodSeconds: 30
+    timeoutSeconds: 60
+    initialDelaySeconds: 30
   resources:
     requests:
       memory: 512Mi
@@ -34,7 +39,7 @@ workers:
 triggerer:
   persistence:
     size: 5Gi
-    
+
 data:
   metadataConnection:
     user: airflow
@@ -66,7 +71,7 @@ dags:
     credentialsSecret: airflow-git-sync-credentials
 
 createUserJob:
-  enabled: true
+  enabled: false
   useHelmHooks: false
   defaultUser:
     role: Admin
