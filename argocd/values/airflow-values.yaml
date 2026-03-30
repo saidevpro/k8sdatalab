@@ -58,7 +58,7 @@ dags:
     credentialsSecret: airflow-git-sync-credentials
 
 createUserJob:
-  enabled: false
+  enabled: true
   useHelmHooks: false
   defaultUser:
     role: Admin
