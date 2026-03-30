@@ -2,7 +2,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: wildcard-cert
-  namespace: data-platform
+  namespace: lab-system
 spec:
   secretName: wildcard-tls
   issuerRef:
@@ -10,3 +10,7 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - "*.k8sdatalab.com"
+  secretTemplate:
+    annotations:
+      replicator.v1.mittwald.de/replication-allowed: "true"
+      replicator.v1.mittwald.de/replication-allowed-namespaces: "argocd,data-platform,observability,infrastructure"
