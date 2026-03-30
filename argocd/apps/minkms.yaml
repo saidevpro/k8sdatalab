@@ -31,6 +31,7 @@ spec:
     helm:
       values: |
         minkms:
+          name: minkms
           image:
             repository: quay.io/minio/aistor/minkms
             tag:  RELEASE.2025-11-12T19-14-51Z
