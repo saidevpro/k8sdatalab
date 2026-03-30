@@ -7,7 +7,7 @@ image:
 versionStoreType: JDBC2
 
 jdbc:
-  jdbcUrl: jdbc:postgresql://postgresql-data-platform.data-platform.svc.cluster.local:5432/nessie-db
+  jdbcUrl: jdbc:postgresql://postgresql-data-platform.data-platform.svc.cluster.local:5432/nessie
   secret:
     name: nessie-pgcreds
     username: username
