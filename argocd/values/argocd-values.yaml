@@ -15,12 +15,13 @@ server:
       cpu: 200m
 
 repoServer:
+  replicas: 2
   resources:
     requests:
-      memory: 128Mi
-      cpu: 100m
-    limits:
       memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 2Gi
       cpu: 200m
 
 applicationSet:
