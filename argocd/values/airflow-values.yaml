@@ -27,6 +27,14 @@ scheduler:
       memory: 1Gi
       cpu: 500m
 
+workers: 
+  persistence:
+    size: 2Gi
+  
+triggerer:
+  persistence:
+    size: 5Gi
+    
 data:
   metadataConnection:
     user: airflow
