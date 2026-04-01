@@ -48,9 +48,11 @@ service:
 additionalCatalogs:
   iceberg: |-
     connector.name=iceberg
-    iceberg.catalog.type=rest
-    iceberg.rest-catalog.uri=http://nessie.data-platform.svc.cluster.local:19120/api/v2
-    iceberg.rest-catalog.warehouse=s3://datalake/warehouse/
+    iceberg.catalog.type=nessie
+    iceberg.nessie-catalog.uri=http://nessie.data-platform.svc.cluster.local:19120/api/v2
+    iceberg.nessie-catalog.ref=main
+    iceberg.nessie-catalog.warehouse=s3://datalake/warehouse
+    iceberg.nessie-catalog.default-warehouse-dir=s3://datalake/warehouse
 
     # MinIO comme stockage S3
     fs.native-s3.enabled=true
