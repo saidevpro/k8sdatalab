@@ -2,3 +2,4 @@
 .ansible
 kubeconfig.yaml
 server
+.venv

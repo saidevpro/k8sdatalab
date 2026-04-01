@@ -1,10 +1,30 @@
 server:
   workers: 2
+  config: 
+    authenticationType: "PASSWORD"
 
 additionalConfigProperties:
   - http-server.process-forwarded=true
 
 coordinator:
+  additionalConfigProperties:
+    - http-server.authentication.type=PASSWORD
+
+  additionalConfigFiles:
+    password-authenticator.properties: |
+      password-authenticator.name=file
+      file.password-file=/etc/trino/passwd/password.db
+
+  additionalVolumes:
+    - name: trino-password
+      secret:
+        secretName: trino-password
+
+  additionalVolumeMounts:
+    - name: trino-password
+      mountPath: /etc/trino/passwd
+      readOnly: true
+
   resources:
     requests:
       memory: 512Mi
@@ -29,13 +49,13 @@ additionalCatalogs:
   iceberg: |-
     connector.name=iceberg
     iceberg.catalog.type=rest
-    iceberg.rest-catalog.uri=http://nessie.k8sdatalab.com/iceberg/v1
+    iceberg.rest-catalog.uri=http://nessie.data-platform.svc.cluster.local:19120/api/v2
     iceberg.rest-catalog.warehouse=s3://datalake/warehouse/
 
     # MinIO comme stockage S3
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.k8sdatalab.com
-    s3.aws-access-key=SMhhxFUV4chm3gwjPsea
-    s3.aws-secret-key=xbTURiHNZq6yXUjfRJTPKB6aYybHZQa1kecmB1Ms
+    s3.endpoint=http://minio.data-platform.svc.cluster.local:9000
+    s3.aws-access-key=Zpw975O18Eh9kFH3ICBa
+    s3.aws-secret-key=N9K4zKm30IFLGPN6JoBiCNsiQDKhYABao52N3pjM
     s3.path-style-access=true
     s3.region=us-east-1
