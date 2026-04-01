@@ -51,7 +51,9 @@ spec:
               deploymentName:
                 type: string
               flinkConfiguration:
-                x-kubernetes-preserve-unknown-fields: true
+                additionalProperties:
+                  type: string
+                type: object
               job:
                 properties:
                   allowNonRestoredState:
