@@ -5,6 +5,7 @@ server:
 
 additionalConfigProperties:
   - http-server.process-forwarded=true
+  - internal-communication.shared-secret=v6PJuMVdoV/gVRKpXCsUeDbYj4dJrzrQC8fVZK/kuA8=
 
 coordinator:
   additionalConfigProperties:
