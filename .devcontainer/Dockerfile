@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     sshpass \
     iputils-ping \
+    default-jre-headless \
     dnsutils \
     && locale-gen en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
@@ -36,6 +37,11 @@ RUN curl -sSL -o /usr/local/bin/argocd \
 RUN curl -sSL -o /usr/local/bin/mc \
     https://dl.min.io/client/mc/release/linux-amd64/mc \
     && chmod +x /usr/local/bin/mc
+
+# Installer Trino CLI
+RUN curl -L -o /usr/local/bin/trino \
+    https://repo1.maven.org/maven2/io/trino/trino-cli/469/trino-cli-469-executable.jar \
+    && chmod +x /usr/local/bin/trino
 
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
