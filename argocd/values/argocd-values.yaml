@@ -8,10 +8,10 @@ configs:
 server:
   resources:
     requests:
-      memory: 128Mi
+      memory: 256Mi
       cpu: 100m
     limits:
-      memory: 256Mi
+      memory: 512Mi
       cpu: 200m
 
 repoServer:
@@ -21,7 +21,7 @@ repoServer:
       memory: 256Mi
       cpu: 200m
     limits:
-      memory: 2Gi
+      memory: 1Gi
       cpu: 200m
 
 applicationSet:
@@ -36,10 +36,10 @@ applicationSet:
 controller:
   resources:
     requests:
-      memory: 256Mi
-      cpu: 200m
-    limits:
       memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 2Gi
       cpu: 500m
 
 redis:
