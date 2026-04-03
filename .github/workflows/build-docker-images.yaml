@@ -13,30 +13,43 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.changed.outputs.matrix }}
+      has_changes: ${{ steps.changed.outputs.has_changes }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0    # ← récupérer tout l'historique
 
       - name: Detect changed images
         id: changed
         run: |
-          # Trouver les Dockerfiles modifiés
-          # Format attendu: docker-images/<image>/<version>/Dockerfile
-          MATRIX=$(git diff --name-only HEAD~1 HEAD \
+          # Comparer avec le commit précédent
+          if git rev-parse HEAD~1 > /dev/null 2>&1; then
+            BASE="HEAD~1"
+          else
+            BASE="$(git hash-object -t tree /dev/null)"  # ← arbre vide si 1er commit
+          fi
+
+          CHANGED=$(git diff --name-only $BASE HEAD \
             | grep '^docker-images/.*/Dockerfile$' \
             | awk -F'/' '{print "{\"image\":\""$2"\",\"version\":\""$3"\"}"}' \
-            | jq -s -c '{"include": .}')
+            | jq -s -c '.')
 
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Changed: $MATRIX"
+          echo "Changed files: $CHANGED"
+
+          if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "matrix={\"include\":$CHANGED}" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
 
   build:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: needs.detect-changes.outputs.matrix != '{"include":[]}'
+    if: needs.detect-changes.outputs.has_changes == 'true'
 
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
