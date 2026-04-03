@@ -8,6 +8,11 @@ hub:
     Authenticator:
       admin_users:
         - admin
+      allowed_users:
+        - admin
+        - dev
+        - said
+        - abdoulaye
 
 proxy:
   service:
