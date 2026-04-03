@@ -22,6 +22,7 @@ proxy:
 singleuser:
   networkPolicy:
     enabled: false
+  serviceAccountName: jupyterhub-notebook-sa
   image:
     name: saidsow/jupyterhub-datalab
     tag: "1.0.0"
