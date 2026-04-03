@@ -1,0 +1,66 @@
+name: Build & Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker-images/**'
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.changed.outputs.matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed images
+        id: changed
+        run: |
+          # Trouver les Dockerfiles modifiés
+          # Format attendu: docker-images/<image>/<version>/Dockerfile
+          MATRIX=$(git diff --name-only HEAD~1 HEAD \
+            | grep '^docker-images/.*/Dockerfile$' \
+            | awk -F'/' '{print "{\"image\":\""$2"\",\"version\":\""$3"\"}"}' \
+            | jq -s -c '{"include": .}')
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Changed: $MATRIX"
+
+  build:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.matrix != '{"include":[]}'
+
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push ${{ matrix.image }}:${{ matrix.version }}
+        uses: docker/build-push-action@v6
+        with:
+          context: docker-images/${{ matrix.image }}/${{ matrix.version }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.version }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.version }}
