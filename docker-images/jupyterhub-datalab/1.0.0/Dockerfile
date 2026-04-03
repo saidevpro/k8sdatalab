@@ -48,8 +48,7 @@ RUN useradd -m -s /bin/bash -u ${NB_UID} ${NB_USER}
 # Python deps
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt \
-    && which jupyterhub-singleuser
+    && rm /tmp/requirements.txt
 
 RUN mkdir -p ${HOME}/.local/share/jupyter/runtime \
     && mkdir -p ${HOME}/.jupyter \

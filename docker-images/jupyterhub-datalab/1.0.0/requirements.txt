@@ -5,6 +5,8 @@ jupyterlab-git
 jupyterlab-theme-solarized-dark
 jupyterlab-night
 theme-darcula
+catppuccin-jupyterlab
+jupyterlab_materialdarker
 
 # Spark
 pyspark==3.5.8
