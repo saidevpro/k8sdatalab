@@ -1,5 +1,6 @@
 # Jupyter
 jupyterlab==4.3.4
+jupyterhub
 jupyterlab-git
 jupyterlab-theme-solarized-dark
 jupyterlab-night

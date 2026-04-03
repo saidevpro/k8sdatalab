@@ -36,4 +36,5 @@ RUN wget -q -P ${SPARK_HOME}/jars \
 # Python deps
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt
+    && rm /tmp/requirements.txt \
+    && which jupyterhub-singleuser
