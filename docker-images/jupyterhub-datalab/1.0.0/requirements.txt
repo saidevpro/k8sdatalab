@@ -1,0 +1,18 @@
+# Jupyter
+jupyterlab==4.3.4
+jupyterlab-git
+jupyterlab-theme-solarized-dark
+jupyterlab-night
+theme-darcula
+
+# Spark
+pyspark==3.5.8
+
+# Data
+pandas
+pyarrow
+
+# Connecteurs
+trino
+sqlalchemy-trino
+boto3
