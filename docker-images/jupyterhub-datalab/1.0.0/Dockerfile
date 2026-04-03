@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-17-jdk-headless \
     wget \
     curl \
+    git \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
