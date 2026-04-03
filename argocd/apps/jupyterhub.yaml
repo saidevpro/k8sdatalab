@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jupyterhub
+spec:
+  project: lab-system
+  source:
+    repoURL: https://github.com/saidevpro/k8sdatalab
+    targetRevision: main
+    path: argocd/charts/jupyterhub
+    helm:
+      valueFiles:
+        - ../../values/jupyterhub-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: data-platform
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

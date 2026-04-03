@@ -1,0 +1,77 @@
+hub:
+  config:
+    JupyterHub:
+      admin_access: true
+      authenticator_class: dummy
+    DummyAuthenticator:
+      password: "kWw9o06sb4kC"
+    Authenticator:
+      admin_users:
+        - admin
+
+proxy:
+  service:
+    type: ClusterIP
+  secretToken: "442e402846ab4fa51abb464be831920e9cdde19f21db2515cb8600741fdee23f"
+
+singleuser:
+  image:
+    name: saidsow/jupyterhub-datalab
+    tag: "1.0.0"
+    pullPolicy: Always
+
+  profileList:
+  - display_name: "Data Engineering — Spark + Iceberg + Nessie"
+    description: "PySpark 3.5.8 avec Iceberg, Nessie et connexion MinIO"
+    default: true
+    kubespawner_override:
+      image: saidsow/jupyterhub-datalab:1.0.0
+      cpu_limit: 2
+      cpu_guarantee: 0.5
+      mem_limit: "4G"
+      mem_guarantee: "1G"
+
+  cpu:
+    limit: 2
+    guarantee: 0.5
+  memory:
+    limit: 4G
+    guarantee: 1G
+
+  storage:
+    type: dynamic
+    capacity: 5Gi
+    homeMountPath: /home/jovyan
+    dynamic:
+      storageClass: longhorn
+      storageAccessModes: [ReadWriteOnce]
+
+  extraEnv:
+    SPARK_HOME: /opt/spark
+    MINIO_ENDPOINT: "http://minio.data-platform.svc.cluster.local:9000"
+    NESSIE_URI: "http://nessie.data-platform.svc.cluster.local:19120/api/v1"
+    TRINO_HOST: "trino.data-platform.svc.cluster.local"
+    TRINO_PORT: "8080"
+    TRINO_USER: "admin"
+
+  defaultUrl: "/lab"
+  startTimeout: 300
+
+scheduling:
+  userScheduler:
+    enabled: false
+
+  userPlaceholder:
+    enabled: false
+
+prePuller:
+  hook:
+    enabled: false
+  continuous:
+    enabled: false
+
+# Idle culler — close session after 1h
+cull:
+  enabled: true
+  timeout: 3600
+  every: 600
