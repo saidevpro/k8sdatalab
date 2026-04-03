@@ -20,6 +20,8 @@ proxy:
   secretToken: "442e402846ab4fa51abb464be831920e9cdde19f21db2515cb8600741fdee23f"
 
 singleuser:
+  networkPolicy:
+    enabled: false
   image:
     name: saidsow/jupyterhub-datalab
     tag: "1.0.0"
