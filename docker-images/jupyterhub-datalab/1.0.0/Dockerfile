@@ -52,7 +52,6 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
 
 # Dossiers Jupyter avec bonnes permissions
 RUN mkdir -p ${HOME}/.local/share/jupyter/runtime \
-    && mkdir -p ${HOME}/.jupyter \
     && chown -R ${NB_USER}:${NB_USER} ${HOME} \
     && chown -R ${NB_USER}:${NB_USER} ${SPARK_HOME}
 
