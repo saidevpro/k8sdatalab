@@ -7,6 +7,14 @@ ENV SPARK_HOME=/opt/spark
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
 
+ARG NB_USER=jovyan
+ARG NB_UID=1000
+ENV NB_USER=${NB_USER}
+ENV NB_UID=${NB_UID}
+ENV HOME=/home/${NB_USER}
+ENV JUPYTER_RUNTIME_DIR=${HOME}/.local/share/jupyter/runtime
+ENV JUPYTER_DATA_DIR=${HOME}/.local/share/jupyter
+
 # Dépendances système
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-17-jdk-headless \
@@ -33,8 +41,20 @@ RUN wget -q -P ${SPARK_HOME}/jars \
     https://repo1.maven.org/maven2/org/projectnessie/nessie-integrations/nessie-spark-extensions-3.5_2.12/0.104.5/nessie-spark-extensions-3.5_2.12-0.104.5.jar \
     https://repo1.maven.org/maven2/io/trino/trino-jdbc/469/trino-jdbc-469.jar
 
+# Create user
+RUN useradd -m -s /bin/bash -u ${NB_UID} ${NB_USER}
+
 # Python deps
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt \
     && which jupyterhub-singleuser
+
+# Dossiers Jupyter avec bonnes permissions
+RUN mkdir -p ${HOME}/.local/share/jupyter/runtime \
+    && mkdir -p ${HOME}/.jupyter \
+    && chown -R ${NB_USER}:${NB_USER} ${HOME} \
+    && chown -R ${NB_USER}:${NB_USER} ${SPARK_HOME}
+
+USER ${NB_USER}
+WORKDIR ${HOME}
