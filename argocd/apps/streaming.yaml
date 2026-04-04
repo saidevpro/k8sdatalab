@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: streaming-manifest
+spec:
+  project: lab-system
+  source:
+    repoURL: https://github.com/saidevpro/k8sdatalab
+    targetRevision: main
+    path: argocd/streamings
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: streaming
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

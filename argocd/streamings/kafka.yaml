@@ -1,0 +1,82 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: controllers
+  labels:
+    strimzi.io/cluster: kafka-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 2
+  roles:
+    - controller
+  storage:
+    type: persistent-claim
+    size: 5Gi
+    deleteClaim: false
+    class: longhorn
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 200m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: brokers
+  labels:
+    strimzi.io/cluster: kafka-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 3
+  roles:
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 10Gi
+        deleteClaim: false
+        class: longhorn
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: "1"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: kafka-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  kafka:
+    version: 4.1.1
+    metadataVersion: 4.1
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      log.retention.hours: 168
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
