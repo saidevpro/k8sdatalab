@@ -46,9 +46,14 @@ RUN wget -q -P ${SPARK_HOME}/jars \
 RUN useradd -m -s /bin/bash -u ${NB_UID} ${NB_USER}
 
 # Python deps
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir "dlt[filesystem]==1.23.0" -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt
+RUN pip install --no-cache-dir \
+    "dlt[filesystem]==1.23.0" \
+    jupyterlab==4.3.4 \
+    jupyterhub \
+    jupyterlab-git \
+    jupyterlab-night \
+    pyspark==3.5.8 \
+    pandas
 
 RUN mkdir -p ${HOME}/.local/share/jupyter/runtime \
     && mkdir -p ${HOME}/.jupyter \
