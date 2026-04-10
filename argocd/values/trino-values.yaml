@@ -28,7 +28,7 @@ coordinator:
 
   resources:
     requests:
-      memory: 512Mi
+      memory: 384Mi
       cpu: 250m
     limits:
       memory: 1Gi
@@ -37,10 +37,10 @@ coordinator:
 worker:
   resources:
     requests:
-      memory: 512Mi
+      memory: 384Mi
       cpu: 250m
     limits:
-      memory: 1Gi
+      memory: 768Mi
       cpu: 500m
 
 service:
