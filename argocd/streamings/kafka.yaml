@@ -18,10 +18,10 @@ spec:
   resources:
     requests:
       memory: 512Mi
-      cpu: 200m
+      cpu: 500m
     limits:
       memory: 1Gi
-      cpu: 500m
+      cpu: "1"
 ---
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
@@ -32,7 +32,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  replicas: 3
+  replicas: 2
   roles:
     - broker
   storage:
@@ -45,10 +45,10 @@ spec:
         class: longhorn
   resources:
     requests:
-      memory: 1Gi
+      memory: 768Mi
       cpu: 500m
     limits:
-      memory: 2Gi
+      memory: 1536Mi
       cpu: "1"
 ---
 apiVersion: kafka.strimzi.io/v1
