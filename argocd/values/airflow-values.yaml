@@ -97,6 +97,7 @@ env:
 
 extraPipPackages:
   - apache-airflow-providers-openlineage
+  -  "dlt==1.24.0"
 
 extraEnv: |-
   - name: AIRFLOW__OPENLINEAGE__NAMESPACE
