@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`jupyter.k8sdatalab.com`)
+    - match: Host(`jupyterhub.k8sdatalab.com`)
       kind: Rule
       services:
         - name: proxy-public
