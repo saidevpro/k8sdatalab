@@ -29,8 +29,8 @@ singleuser:
     pullPolicy: Always
 
   profileList:
-  - display_name: "Data Engineering — Spark + Iceberg + Nessie"
-    description: "PySpark 3.5.8 avec Iceberg, Nessie et connexion MinIO"
+  - display_name: "Data Engineering — Spark, DLT, Pandas"
+    description: "PySpark 3.5.8 - DLT"
     default: true
     kubespawner_override:
       image: saidsow/jupyterhub-datalab:spark-3.5.8-dlt
