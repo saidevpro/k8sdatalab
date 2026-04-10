@@ -73,7 +73,6 @@ jobs:
           context: docker-images/${{ matrix.image }}/${{ matrix.version }}
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}
           cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.version }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.version }}
