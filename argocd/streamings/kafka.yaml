@@ -7,7 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  replicas: 1
+  replicas: 2
   roles:
     - controller
   storage:
@@ -18,10 +18,10 @@ spec:
   resources:
     requests:
       memory: 512Mi
-      cpu: 500m
+      cpu: 200m
     limits:
       memory: 1Gi
-      cpu: "1"
+      cpu: 500m
 ---
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
@@ -32,7 +32,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  replicas: 2
+  replicas: 3
   roles:
     - broker
   storage:
@@ -48,7 +48,7 @@ spec:
       memory: 768Mi
       cpu: 500m
     limits:
-      memory: 1536Mi
+      memory: 1Gi
       cpu: "1"
 ---
 apiVersion: kafka.strimzi.io/v1
@@ -71,10 +71,10 @@ spec:
         type: internal
         tls: true
     config:
-      offsets.topic.replication.factor: 2
-      transaction.state.log.replication.factor: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-      default.replication.factor: 2
+      default.replication.factor: 3
       min.insync.replicas: 2
       log.retention.hours: 168
   entityOperator:
