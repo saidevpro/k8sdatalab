@@ -114,4 +114,4 @@ extraEnv: |-
     value: k8sdatalab
   - name: AIRFLOW__OPENLINEAGE__TRANSPORT
     value: >-
-      {"type":"http","url":"http://marquez.marquez.svc.cluster.local","endpoint":"api/v1/lineage"}
+      {"type":"http","url":"http://marquez.observability.svc.cluster.local","endpoint":"api/v1/lineage"}
