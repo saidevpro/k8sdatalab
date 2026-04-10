@@ -19,3 +19,6 @@ pyarrow
 trino
 sqlalchemy-trino
 boto3
+
+# ETL
+dlt==1.23.0
