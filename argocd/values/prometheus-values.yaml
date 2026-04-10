@@ -7,8 +7,8 @@ grafana:
       memory: 256Mi
       cpu: 100m
     limits:
-      memory: 2Gi
-      cpu: 200m
+      memory: 512Mi
+      cpu: 300m
   persistence:
     enabled: true
     size: 10Gi
@@ -26,7 +26,7 @@ prometheus:
         memory: 512Mi
         cpu: 250m
       limits:
-        memory: 2Gi
+        memory: 768Mi
         cpu: 500m
     storageSpec:
       volumeClaimTemplate:
@@ -37,6 +37,9 @@ prometheus:
           resources:
             requests:
               storage: 10Gi
+  scrapeconfig:
+    scrapeInterval: 60s
+    evaluationInterval: 60s
 
 # AlertManager
 alertmanager:
