@@ -25,7 +25,7 @@ singleuser:
   serviceAccountName: jupyterhub-notebook-sa
   image:
     name: saidsow/jupyterhub-datalab
-    tag: "1.0.0"
+    tag: "spark-3.5.8-dlt"
     pullPolicy: Always
 
   profileList:
@@ -33,7 +33,7 @@ singleuser:
     description: "PySpark 3.5.8 avec Iceberg, Nessie et connexion MinIO"
     default: true
     kubespawner_override:
-      image: saidsow/jupyterhub-datalab:1.0.0
+      image: saidsow/jupyterhub-datalab:spark-3.5.8-dlt
       cpu_limit: 2
       cpu_guarantee: 0.5
       mem_limit: "4G"
