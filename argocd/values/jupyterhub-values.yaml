@@ -35,13 +35,13 @@ singleuser:
     kubespawner_override:
       image: saidsow/jupyterhub-datalab:spark-3.5.8-dlt
       cpu_limit: 2
-      cpu_guarantee: 0.5
+      cpu_guarantee: 1
       mem_limit: "4G"
       mem_guarantee: "1G"
 
   cpu:
     limit: 2
-    guarantee: 0.5
+    guarantee: 1
   memory:
     limit: 4G
     guarantee: 1G
