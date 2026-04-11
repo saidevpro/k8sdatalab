@@ -54,6 +54,13 @@ singleuser:
       storageClass: longhorn
       storageAccessModes: [ReadWriteOnce]
 
+  extraPodConfig:
+    containers:
+      - name: notebook
+        envFrom:
+          - secretRef:
+              name: dag-bronze-vars
+
   extraEnv:
     SPARK_HOME: /opt/spark
     MINIO_ENDPOINT: "http://minio.data-platform.svc.cluster.local:9000"
