@@ -27,7 +27,7 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
  && curl -fsSL -o /opt/spark/jars/trino-jdbc-469.jar \
       https://repo1.maven.org/maven2/io/trino/trino-jdbc/469/trino-jdbc-469.jar
 
-RUN pip install --no-cache-dir maturin
+# RUN pip install --no-cache-dir maturin
 RUN pip install --no-cache-dir \
     "dlt[filesystem,parquet,pyiceberg]==1.23.0" \
     jupyterlab==4.3.4 \
