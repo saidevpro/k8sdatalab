@@ -29,14 +29,14 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
 
 # RUN pip install --no-cache-dir maturin
 RUN pip install --no-cache-dir \
+     "pyiceberg[pyarrow]" \
      "dlt[filesystem,parquet,pyiceberg]==1.23.0" \
      jupyterlab==4.3.4 \
      jupyterhub \
      jupyterlab-git \
      jupyterlab-night \
      theme-darcula \
-     pandas \
-     "pyiceberg[pyarrow]"
+     pandas
 
 
 RUN useradd -m -s /bin/bash -u ${NB_UID} ${NB_USER} \
