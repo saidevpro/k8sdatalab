@@ -28,7 +28,7 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
       https://repo1.maven.org/maven2/io/trino/trino-jdbc/469/trino-jdbc-469.jar
 
 RUN pip install --no-cache-dir \
-     pyspark=3.5.8 \
+     pyspark==3.5.8 \
      jupyterlab==4.3.4 \
      jupyterhub \
      jupyterlab-git \
