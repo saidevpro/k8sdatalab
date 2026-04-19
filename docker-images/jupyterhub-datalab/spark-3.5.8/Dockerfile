@@ -34,7 +34,8 @@ RUN pip install --no-cache-dir \
      jupyterlab-git \
      jupyterlab-night \
      theme-darcula \
-     pandas
+     pandas  \
+     pynessie
 
 RUN useradd -m -s /bin/bash -u ${NB_UID} ${NB_USER} \
     && mkdir -p ${HOME}/.local/share/jupyter/runtime \
