@@ -47,6 +47,9 @@ scheduler:
 workers: 
   persistence:
     size: 2Gi
+  serviceAccount:
+    create: false
+    name: airflow-worker
   
 triggerer:
   persistence:
