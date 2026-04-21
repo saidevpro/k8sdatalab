@@ -33,7 +33,7 @@ jobs:
           fi
 
           CHANGED=$(git diff --name-only $BASE HEAD \
-            | grep '^docker-images/.*/Dockerfile$' \
+            | grep '^docker-images/[^/]*/[^/]*/' \
             | awk -F'/' '{print "{\"image\":\""$2"\",\"version\":\""$3"\"}"}' \
             | jq -s -c '.')
 
