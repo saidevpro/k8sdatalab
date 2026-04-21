@@ -6,7 +6,7 @@ import requests as rq
 
 spark = SparkSession.builder.getOrCreate()
 
-nessie_ref = spark.conf.get("spark.sql.catalog.nessie.ref", "")
+nessie_ref = spark.conf.get("spark.sql.catalog.nessie.ref")
 nessie_namespace = os.getenv("NESSIE_NAMESPACE")
 
 PRIM_DATASET_URI = os.getenv("PRIM_DATASET_URI")
