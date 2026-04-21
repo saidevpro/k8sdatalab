@@ -11,7 +11,7 @@ with DAG(
 ) as dag:
     ingest_task = SparkSubmitOperator(
         task_id="ingest_prim_idfm_dataset",
-        conn_id="spark_default"
+        conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
         name="ingestion-prim-idfm",
         deploy_mode="cluster",
