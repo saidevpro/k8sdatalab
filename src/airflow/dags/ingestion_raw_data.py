@@ -6,12 +6,11 @@ from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOpe
 with DAG(
     dag_id="ingestion_raw_data",
     start_date=datetime(2026, 1, 1),
-    schedule="@daily",
+    schedule="@monthly",
     catchup=False,
 ) as dag:
     ingest_task = SparkSubmitOperator(
         task_id="ingest_prim_idfm_dataset",
-        conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
         name="ingestion-prim-idfm",
         deploy_mode="cluster",
@@ -37,9 +36,5 @@ with DAG(
             "spark.kubernetes.driverEnv.PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "spark.kubernetes.driverEnv.DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
         },
-        num_executors=1,
-        executor_cores=1,
-        executor_memory="1g",
-        driver_memory="512m",
         verbose=True,
     )
