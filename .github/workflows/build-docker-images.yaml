@@ -82,6 +82,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: docker-images/${{ matrix.image }}/${{ matrix.version }}/Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}
