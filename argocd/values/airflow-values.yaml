@@ -119,3 +119,13 @@ extraEnv: |-
   - name: AIRFLOW__OPENLINEAGE__TRANSPORT
     value: >-
       {"type":"http","url":"http://marquez.observability.svc.cluster.local","endpoint":"api/v1/lineage"}
+  - name: AIRFLOW__LOGGING__REMOTE_LOGGING
+    value: "True"
+  - name: AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
+    value: "s3://airflow-logs/logs"
+  - name: AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID
+    value: "minio"
+  - name: AIRFLOW__LOGGING__DELETE_LOCAL_LOGS
+    value: "False"
+  - name: AIRFLOW__LOGGING__ENCRYPT_S3_LOGS
+    value: "False"
