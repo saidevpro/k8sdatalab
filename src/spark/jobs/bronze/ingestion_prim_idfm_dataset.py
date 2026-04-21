@@ -2,7 +2,7 @@ from ..utils import createOrOverwritePartitions
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 import os
-import requests
+import requests as rq
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -13,7 +13,7 @@ PRIM_DATASET_URI = os.getenv("PRIM_DATASET_URI")
 DEST_TABLE = os.getenv("DESTINATION_TABLE")
 DEST_NAMESPACE = f"{nessie_ref}.{nessie_namespace}"
 
-r = requests.get(PRIM_DATASET_URI, timeout=30)
+r = rq.get(PRIM_DATASET_URI, timeout=30)
 r.raise_for_status()
 
 tmp_file = "/tmp/accessibility-gares.csv"
