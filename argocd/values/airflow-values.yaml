@@ -6,11 +6,11 @@ images:
   airflow:
     repository: saidsow/airflow
     tag: "3.1.8"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   pod_template:
     repository: saidsow/airflow
     tag: "3.1.8"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
 
 apiServer:
   enabled: true
