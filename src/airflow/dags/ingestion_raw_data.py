@@ -11,7 +11,7 @@ with DAG(
     ingest_task = SparkKubernetesOperator(
         task_id="ingest_prim_idfm_dataset",
         namespace="spark-jobs",
-        application_file="/path/to/spark-app-config.yaml",
+        application_file="/app/spark/confs/spark-small.conf",
         image="saidevpro/spark:3.5.8-jobs",
         app_name="ingestion-prim-idfm",
         main_application_file="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
@@ -23,6 +23,8 @@ with DAG(
             "spark.submit.deployMode": "cluster",
             "spark.sql.catalog.nessie.ref": "dev",
             "spark.sql.catalog.nessie.uri": "http://nessie.k8sdatalab.com/api/v1",
+            "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
+            "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}"
         },
         env_vars={
             "NESSIE_NAMESPACE": "bronze",
