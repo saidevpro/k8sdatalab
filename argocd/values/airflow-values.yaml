@@ -77,7 +77,7 @@ dags:
     repo: https://github.com/saidevpro/k8sdatalab.git
     branch: main
     subPath: src/airflow/dags
-    period: 60s
+    period: 30s
     credentialsSecret: airflow-git-sync-credentials
 
 createUserJob:
