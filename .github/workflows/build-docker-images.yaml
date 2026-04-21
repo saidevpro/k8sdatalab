@@ -81,7 +81,7 @@ jobs:
       - name: Build and Push ${{ matrix.image }}:${{ matrix.version }}
         uses: docker/build-push-action@v6
         with:
-          context: docker-images/${{ matrix.image }}/${{ matrix.version }}
+          context: .
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}

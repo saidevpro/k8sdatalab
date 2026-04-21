@@ -1,4 +1,4 @@
-from utils import createOrOverwritePartitions
+from ..utils import createOrOverwritePartitions
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 import os
