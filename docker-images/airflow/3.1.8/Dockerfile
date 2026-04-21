@@ -20,5 +20,5 @@ ENV PATH=${SPARK_HOME}/bin:${PATH}
 USER airflow
 
 RUN pip install --no-cache-dir \
-    "dlt[filesystem,parquet]==1.23.0" \
-    "apache-airflow-providers-apache-spark"
+    "apache-airflow-providers-apache-spark" \
+    "apache-airflow-providers-amazon"
