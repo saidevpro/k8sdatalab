@@ -8,6 +8,7 @@ ARG HADOOP_VERSION=3
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     tar \
+    openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" \
@@ -15,7 +16,8 @@ RUN curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spa
     && ln -s /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark
 
 ENV SPARK_HOME=/opt/spark
-ENV PATH=${SPARK_HOME}/bin:${PATH}
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH=${JAVA_HOME}/bin:${SPARK_HOME}/bin:${PATH}
 
 USER airflow
 
