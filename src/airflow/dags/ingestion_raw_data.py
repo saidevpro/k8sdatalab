@@ -21,21 +21,18 @@ with DAG(
             "DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
         },
         conf={
-            "spark.master": "k8s://https://kubernetes.default.svc:443",
             "spark.kubernetes.container.image": "saidevpro/spark:3.5.8-jobs",
             "spark.kubernetes.namespace": "spark-jobs",
             "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
-            "spark.submit.deployMode": "cluster",
 
             "spark.sql.catalog.nessie.ref": "dev",
             "spark.sql.catalog.nessie.uri": "http://nessie.k8sdatalab.com/api/v1",
 
             "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
             "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
-
-            "spark.kubernetes.driverEnv.NESSIE_NAMESPACE": "bronze",
-            "spark.kubernetes.driverEnv.PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
-            "spark.kubernetes.driverEnv.DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
+            # "spark.kubernetes.driverEnv.NESSIE_NAMESPACE": "bronze",
+            # "spark.kubernetes.driverEnv.PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
+            # "spark.kubernetes.driverEnv.DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
         },
         verbose=True,
     )
