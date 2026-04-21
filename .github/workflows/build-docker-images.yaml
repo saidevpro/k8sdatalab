@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'docker-images/**'
+      - "docker-images/**"
+      - "src/spark/**"
   workflow_dispatch:
 
 jobs:
@@ -19,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0    # ← récupérer tout l'historique
+          fetch-depth: 0 # ← récupérer tout l'historique
 
       - name: Detect changed images
         id: changed
@@ -35,6 +36,16 @@ jobs:
             | grep '^docker-images/.*/Dockerfile$' \
             | awk -F'/' '{print "{\"image\":\""$2"\",\"version\":\""$3"\"}"}' \
             | jq -s -c '.')
+
+          # Check if src/spark changed - if so, add spark:3.5.8-jobs to build
+          if git diff --name-only $BASE HEAD | grep -q '^src/spark/'; then
+            SPARK_IMAGE='{"image":"spark","version":"3.5.8-jobs"}'
+            if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
+              CHANGED="[$SPARK_IMAGE]"
+            else
+              CHANGED=$(echo "$CHANGED" | jq -c ". + [$SPARK_IMAGE] | unique")
+            fi
+          fi
 
           echo "Changed files: $CHANGED"
 
