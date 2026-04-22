@@ -45,6 +45,11 @@ RUN curl -L -o /usr/local/bin/trino \
 
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+RUN wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb \
+    && apt-get update \
+    && apt-get install -y ./k9s_linux_amd64.deb \
+    && rm k9s_linux_amd64.deb
+
 # Install Ansible
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --break-system-packages -r /tmp/requirements.txt
