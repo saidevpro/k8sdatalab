@@ -30,9 +30,6 @@ with DAG(
 
             "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
             "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
-            # "spark.kubernetes.driverEnv.NESSIE_NAMESPACE": "bronze",
-            # "spark.kubernetes.driverEnv.PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
-            # "spark.kubernetes.driverEnv.DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
         },
         verbose=True,
     )
