@@ -25,7 +25,6 @@ with DAG(
             "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
             "spark.kubernetes.namespace": "spark-jobs",
             "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
-            "spark.sql.catalog.nessie.uri": "http://nessie.k8sdatalab.com/api/v1",
             "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
             "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
             "spark.sql.catalog.nessie.ref": "dev",
