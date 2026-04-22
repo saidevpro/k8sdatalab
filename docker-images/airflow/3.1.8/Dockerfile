@@ -4,6 +4,7 @@ USER root
 
 ARG SPARK_VERSION=3.5.8
 ARG HADOOP_VERSION=3
+ARG COMPONENT=docker-images/confs/spark
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -19,6 +20,7 @@ ENV SPARK_HOME=/opt/spark
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=${JAVA_HOME}/bin:${SPARK_HOME}/bin:${PATH}
 
+COPY ${COMPONENT} /app/spark/confs
 
 USER airflow
 

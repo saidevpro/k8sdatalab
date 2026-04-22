@@ -6,6 +6,8 @@ ENV HOME=/home/spark
 ENV PYSPARK_PYTHON=/usr/bin/python3
 ENV PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 
+ARG COMPONENT=docker-images/confs/spark
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -27,6 +29,8 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
       https://repo1.maven.org/maven2/io/trino/trino-jdbc/469/trino-jdbc-469.jar
 
 RUN mkdir -p /home/spark && chown -R spark:root /home/spark /opt/spark
+
+COPY ${COMPONENT} /app/spark/confs
 
 WORKDIR /opt/spark/work-dir
 
