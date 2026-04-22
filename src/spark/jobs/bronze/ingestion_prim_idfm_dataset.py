@@ -5,6 +5,10 @@ import requests as rq
 
 spark = SparkSession.builder.getOrCreate()
 
+print("\n" + "*"*10, "\n")
+print("minio_key=", spark.conf.get("spark.hadoop.fs.s3a.access.key"))
+print("\n" + "*"*10, "\n")
+
 nessie_catalog_name = 'nessie'
 nessie_ref = spark.conf.get("spark.sql.catalog.nessie.ref")
 nessie_namespace = os.getenv("NESSIE_NAMESPACE")
@@ -30,7 +34,7 @@ df = (
     .csv(rdd)
 )
 
-df.show()
+df.printSchema()
 
 df = df.withColumn("ingestion_date", F.current_date())
 
