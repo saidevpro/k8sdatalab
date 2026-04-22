@@ -28,7 +28,7 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
  && curl -fsSL -o /opt/spark/jars/trino-jdbc-469.jar \
       https://repo1.maven.org/maven2/io/trino/trino-jdbc/469/trino-jdbc-469.jar \
  && curl -fsSL -o /opt/spark/jars/openlineage-spark-1.46.0.jar \
-    https://repo1.maven.org/maven2/io/openlineage/openlineage-spark/1.46.0/openlineage-spark-1.46.0.jar
+    https://repo1.maven.org/maven2/io/openlineage/openlineage-spark_2.12/1.46.0/openlineage-spark_2.12-1.46.0.jar
 
 RUN mkdir -p /home/spark && chown -R spark:root /home/spark /opt/spark
 
