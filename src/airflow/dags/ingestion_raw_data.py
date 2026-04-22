@@ -20,6 +20,7 @@ with DAG(
             "NESSIE_NAMESPACE": "bronze",
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
+            "DATASET_ENDPOINT": "/accessibilite-en-gare/exports/csv"
         },
         conf={
             "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
