@@ -1,4 +1,3 @@
-from ..utils import createOrOverwritePartitions
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 import os
@@ -34,11 +33,20 @@ df = df.withColumn("ingestion_date", F.current_date())
 spark.sql(f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN nessie FROM main")
 spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {DEST_NAMESPACE}")
 
-createOrOverwritePartitions(
-    spark=spark,
-    df=df,
-    table=DEST_TABLE,
-    partitionKey="ingestion_date"
-)
+if not spark.catalog.tableExists(DEST_TABLE):
+    (
+        df
+        .writeTo(DEST_TABLE)
+        .partitionedBy("ingestion_date")
+        .option("merge-schema", "true")
+        .create()
+    )
+else:
+    (
+        df
+        .writeTo(DEST_TABLE)
+        .option("merge-schema", "true")
+        .overwritePartitions()
+    )
 
 spark.stop()
