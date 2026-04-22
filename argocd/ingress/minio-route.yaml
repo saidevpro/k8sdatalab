@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`minio.k8sdatalab.com`)
+    - match: Host(`minio-console.k8sdatalab.com`)
       kind: Rule
       services:
         - name: minio-console
