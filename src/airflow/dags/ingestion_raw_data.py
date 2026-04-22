@@ -33,7 +33,8 @@ with DAG(
             "spark.sql.catalog.nessie.ref": "dev",
             "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
             "spark.openlineage.namespace": "bronze_ingestion",
-            "spark.openlineage.appName": app_name
+            "spark.openlineage.appName": app_name,
+            "spark.jars.ivy": "/tmp/.ivy2"
         },
         verbose=True,
     )
