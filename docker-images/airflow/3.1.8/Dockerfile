@@ -1,30 +1,20 @@
+FROM saidsow/spark:3.5.8 AS spark
+
 FROM apache/airflow:3.1.8
 
 USER root
 
-ARG SPARK_VERSION=3.5.8
-ARG HADOOP_VERSION=3
-ARG COMPONENT=.confs/spark
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    tar \
     openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fL --retry 3 --connect-timeout 20 --max-time 600 \
-    -o /tmp/spark.tgz \
-    "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" \
-    && tar -xzf /tmp/spark.tgz -C /opt \
-    && ln -s /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark \
-    && rm /tmp/spark.tgz
+COPY --from=spark /opt/spark /opt/spark
 
 ENV SPARK_HOME=/opt/spark
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=${JAVA_HOME}/bin:${SPARK_HOME}/bin:${PATH}
 
-
-COPY ${COMPONENT} /app/spark/confs
+COPY .confs/spark /app/spark/confs
 
 USER airflow
 
