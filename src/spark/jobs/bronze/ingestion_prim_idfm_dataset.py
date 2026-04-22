@@ -15,15 +15,18 @@ DEST_NAMESPACE = f"{nessie_ref}.{nessie_namespace}"
 r = rq.get(PRIM_DATASET_URI, timeout=30)
 r.raise_for_status()
 
-tmp_file = "/tmp/accessibility-gares.csv"
-open(tmp_file, "wb").write(r.content)
+lines = r.content.decode("utf-8").splitlines()
+rdd = spark.sparkContext.parallelize(lines)
 
 df = (
     spark.read
     .option("header", True)
     .option("inferSchema", True)
     .option("delimiter", ";")
-    .csv(tmp_file)
+    .option("quote", '"')
+    .option("escape", '"')
+    .option("multiLine", True)
+    .csv(rdd)
 )
 
 df.show()
