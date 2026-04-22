@@ -4,7 +4,7 @@ USER root
 
 ARG SPARK_VERSION=3.5.8
 ARG HADOOP_VERSION=3
-ARG COMPONENT=docker-images/confs/spark
+ARG COMPONENT=.confs/spark
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \

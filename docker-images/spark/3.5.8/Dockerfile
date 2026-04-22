@@ -6,7 +6,7 @@ ENV HOME=/home/spark
 ENV PYSPARK_PYTHON=/usr/bin/python3
 ENV PYSPARK_DRIVER_PYTHON=/usr/bin/python3
 
-ARG COMPONENT=docker-images/confs/spark
+ARG COMPONENT=.confs/spark
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
