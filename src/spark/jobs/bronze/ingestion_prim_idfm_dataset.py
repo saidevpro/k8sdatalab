@@ -15,9 +15,10 @@ nessie_namespace = os.getenv("NESSIE_NAMESPACE")
 
 DEST_NAMESPACE = f"{nessie_catalog_name}.{nessie_namespace}"
 PRIM_DATASET_URI = os.getenv("PRIM_DATASET_URI")
+ENDPOINT = os.getenv("DATASET_ENDPOINT")
 DEST_TABLE = os.getenv("DESTINATION_TABLE")
 
-r = rq.get(PRIM_DATASET_URI, timeout=30)
+r = rq.get(f"{PRIM_DATASET_URI}{ENDPOINT}", timeout=30)
 r.raise_for_status()
 
 lines = r.content.decode("utf-8").splitlines()
