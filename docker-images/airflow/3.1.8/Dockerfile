@@ -16,7 +16,6 @@ ENV PATH=${JAVA_HOME}/bin:${SPARK_HOME}/bin:${PATH}
 
 COPY .confs/spark /app/spark/confs
 
-
 USER airflow
 
 RUN pip install --no-cache-dir \
