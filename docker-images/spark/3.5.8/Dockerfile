@@ -30,6 +30,11 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
 
 RUN mkdir -p /home/spark && chown -R spark:root /home/spark /opt/spark
 
+RUN pip3 install --no-cache-dir \
+    requests \
+    pandas \
+    pyarrow
+
 COPY ${COMPONENT} /app/spark/confs
 COPY src/spark/jobs /opt/spark/jobs
 
