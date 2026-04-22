@@ -21,7 +21,7 @@ with DAG(
             "DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
         },
         conf={
-            "spark.kubernetes.container.image": "saidevpro/spark:3.5.8-jobs",
+            "spark.kubernetes.container.image": "saidsow/spark:3.5.8-jobs",
             "spark.kubernetes.namespace": "spark-jobs",
             "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
 
