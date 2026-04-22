@@ -31,6 +31,7 @@ RUN curl -fsSL -o /opt/spark/jars/hadoop-aws-3.3.4.jar \
 RUN mkdir -p /home/spark && chown -R spark:root /home/spark /opt/spark
 
 COPY ${COMPONENT} /app/spark/confs
+COPY src/spark/jobs /opt/spark/jobs
 
 WORKDIR /opt/spark/work-dir
 
