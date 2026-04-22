@@ -3,6 +3,8 @@ from datetime import datetime
 from airflow import DAG
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
+app_name = "ingestion-prim-idfm"
+
 with DAG(
     dag_id="ingestion_raw_data",
     start_date=datetime(2026, 1, 1),
@@ -13,7 +15,7 @@ with DAG(
         task_id="ingest_prim_idfm_dataset",
         conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-        name="ingestion-prim-idfm",
+        name=app_name,
         deploy_mode="cluster",
         properties_file="/app/spark/confs/spark-small.conf",
         env_vars={
@@ -29,7 +31,9 @@ with DAG(
             "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
             "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
             "spark.sql.catalog.nessie.ref": "dev",
-            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/"
+            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+            "spark.openlineage.namespace": "bronze_ingestion",
+            "spark.openlineage.appName": app_name
         },
         verbose=True,
     )
