@@ -34,7 +34,7 @@ df = (
     .csv(rdd)
 )
 
-df.printSchema()
+# df.printSchema()
 
 df = df.withColumn("ingestion_date", F.current_date())
 
