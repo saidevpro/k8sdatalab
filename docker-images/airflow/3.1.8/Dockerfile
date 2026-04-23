@@ -18,6 +18,7 @@ COPY .confs/spark /app/spark/confs
 
 USER airflow
 
+
 RUN pip install --no-cache-dir \
     "apache-airflow-providers-apache-spark" \
     "apache-airflow-providers-amazon"
