@@ -34,6 +34,7 @@ RUN mkdir -p /home/spark && chown -R spark:root /home/spark /opt/spark
 
 RUN pip3 install --no-cache-dir \
     requests \
+    boto3 \
     pandas \
     pyarrow
 
