@@ -6,7 +6,7 @@ spark = SparkSession.builder.getOrCreate()
 
 table = "nessie.bronze.accessibility_gares"
 
-dfo = spark.sql("SELECT * FROM {table}")
+dfo = spark.sql(f"SELECT * FROM {table}")
 
 df = (
     dfo
