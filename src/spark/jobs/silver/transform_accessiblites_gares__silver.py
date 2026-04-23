@@ -4,9 +4,14 @@ import os
 
 spark = SparkSession.builder.getOrCreate()
 
-table = "nessie.bronze.accessibility_gares"
-
-dfo = spark.sql(f"SELECT * FROM {table}")
+dfo = spark.sql("""
+    SELECT *
+    FROM nessie.bronze.accessibility_gares
+    WHERE ingestion_date = (
+        SELECT MAX(ingestion_date)
+        FROM nessie.bronze.accessibility_gares
+    )
+""")
 
 df = (
     dfo
