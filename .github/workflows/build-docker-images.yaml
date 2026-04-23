@@ -40,10 +40,11 @@ jobs:
           # Check if src/spark changed - if so, add spark:3.5.8 to build
           if git diff --name-only $BASE HEAD | grep -q '^src/spark/'; then
             SPARK_IMAGE='{"image":"spark","version":"3.5.8"}'
+            AIRFLOW_IMAGE='{"image":"airflow","version":"3.1.8"}'
             if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
-              CHANGED="[$SPARK_IMAGE]"
+              CHANGED="[$SPARK_IMAGE, $AIRFLOW_IMAGE]"
             else
-              CHANGED=$(echo "$CHANGED" | jq -c ". + [$SPARK_IMAGE] | unique")
+              CHANGED=$(echo "$CHANGED" | jq -c ". + [$SPARK_IMAGE, $AIRFLOW_IMAGE] | unique")
             fi
           fi
 
