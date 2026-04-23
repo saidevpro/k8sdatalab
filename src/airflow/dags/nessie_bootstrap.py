@@ -10,21 +10,23 @@ with DAG(
     catchup=False,
     tags=["bootstrap", "nessie"],
 ) as dag:
-    ensure_nessie_namespaces = BashOperator(
+    ensure_nessie_namespaces_main_and_dev = BashOperator(
         task_id="ensure_nessie_namespaces_main_and_dev",
-        bash_command="""
-        set -e
+        bash_command=r"""
+    set -e
 
-        nessie sql <<'SQL'
-        CONNECT TO http://nessie.data-platform.svc.cluster.local:19120/api/v2 ON main;
-        CREATE NAMESPACE IF NOT EXISTS bronze;
-        CREATE NAMESPACE IF NOT EXISTS silver;
-        CREATE NAMESPACE IF NOT EXISTS gold;
+    nessie -q \
+    -u http://nessie.data-platform.svc.cluster.local:19120/api/v2 \
+    -r main \
+    -c "CREATE NAMESPACE IF NOT EXISTS bronze" \
+    -c "CREATE NAMESPACE IF NOT EXISTS silver" \
+    -c "CREATE NAMESPACE IF NOT EXISTS gold"
 
-        CONNECT TO http://nessie.data-platform.svc.cluster.local:19120/api/v2 ON dev;
-        CREATE NAMESPACE IF NOT EXISTS bronze;
-        CREATE NAMESPACE IF NOT EXISTS silver;
-        CREATE NAMESPACE IF NOT EXISTS gold;
-        SQL
-        """,
+    nessie -q \
+    -u http://nessie.data-platform.svc.cluster.local:19120/api/v2 \
+    -r dev \
+    -c "CREATE NAMESPACE IF NOT EXISTS bronze" \
+    -c "CREATE NAMESPACE IF NOT EXISTS silver" \
+    -c "CREATE NAMESPACE IF NOT EXISTS gold"
+    """,
     )
