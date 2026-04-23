@@ -1,28 +1,36 @@
-def formatDagIdForPipeline(domain: str) -> str: 
+def format_etl_dag_id(domain: str) -> str:
     domain = domain.replace("-", "_").replace(" ", "_")
-    return f"{domain}_pipeline"
+    return f"etl_{domain}"
 
-def formatDagBronzeTaskId(domain: str) -> str: 
+def format_etl_bronze_dag_task_id(domain: str) -> str:
     domain = domain.replace("-", "_").replace(" ", "_")
     return f"ingest_{domain}__bronze"
 
-def formatDagBronzeTaskName(domain: str) -> str: 
-    domain =  domain.replace("_", "-").replace(" ", "-")
+def format_etl_bronze_dag_task_name(domain: str) -> str:
+    domain = domain.replace("_", "-").replace(" ", "-")
     return f"ingestion-{domain}--bronze"
 
-def formatDagSilverTaskId(domain: str) -> str: 
+def format_etl_silver_dag_task_id(domain: str) -> str:
     domain = domain.replace("-", "_").replace(" ", "_")
     return f"transform_{domain}__silver"
 
-def formatDagSilverTaskName(domain: str) -> str: 
-    domain =  domain.replace("_", "-").replace(" ", "-")
+def format_etl_silver_dag_task_name(domain: str) -> str:
+    domain = domain.replace("_", "-").replace(" ", "-")
     return f"transformation-{domain}--silver"
 
-def formatDagGoldTaskId(domain: str) -> str: 
+def format_etl_gold_dag_task_id(domain: str) -> str:
     domain = domain.replace("-", "_").replace(" ", "_")
     return f"publish_{domain}__gold"
 
-def formatDagGoldTaskName(domain: str) -> str: 
-    domain =  domain.replace("_", "-").replace(" ", "-")
+
+def format_etl_gold_dag_task_name(domain: str) -> str:
+    domain = domain.replace("_", "-").replace(" ", "-")
     return f"publishing-{domain}--gold"
     
+def generate_etl_dag_tags(domain_name: str) -> list[str]:
+    normalized = domain_name.replace("_", " ").replace("-", " ").strip().lower()
+    domain_tag = normalized.replace(" ", "-")
+    parts = [part for part in normalized.split() if part]
+
+    tags = ["medallion", "etl", "spark", f"domain:{domain_tag}", *parts]
+    return list(dict.fromkeys(tags))
