@@ -10,11 +10,11 @@ with DAG(
     start_date=datetime(2026, 1, 1),
     schedule="@daily",
     catchup=False,
+    tags=h.generate_etl_dag_tags(dag_domain),
 ) as dag:
     ingest_task = SparkSubmitOperator(
         task_id=h.format_etl_bronze_dag_task_id(dag_domain),
         name=h.format_etl_bronze_dag_task_name(dag_domain),
-        tags=h.generate_etl_dag_tags(dag_domain),
         conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
         deploy_mode="cluster",
