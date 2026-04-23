@@ -32,5 +32,5 @@ def generate_etl_dag_tags(domain_name: str) -> list[str]:
     domain_tag = normalized.replace(" ", "-")
     parts = [part for part in normalized.split() if part]
 
-    tags = ["medallion", "etl", "spark", f"domain:{domain_tag}", *parts]
+    tags = ["etl", "spark", *parts]
     return list(dict.fromkeys(tags))
