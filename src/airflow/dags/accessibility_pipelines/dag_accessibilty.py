@@ -1,21 +1,21 @@
 from datetime import datetime
-
 from airflow import DAG
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+import shared_lib.helpers as hp
 
-app_name = "ingestion-prim-idfm"
+dag_domain = "accessibilites_gares"
 
 with DAG(
-    dag_id="ingestion_raw_data",
+    dag_id=hp.formatDagIdForPipeline(dag_domain),
     start_date=datetime(2026, 1, 1),
-    schedule="@monthly",
+    schedule="@daily",
     catchup=False,
 ) as dag:
     ingest_task = SparkSubmitOperator(
-        task_id="ingest_prim_idfm_dataset",
+        task_id=hp.formatDagBronzeTaskId(dag_domain),
         conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-        name=app_name,
+        name=hp.formatDagBronzeTaskName(dag_domain),
         deploy_mode="cluster",
         properties_file="/app/spark/confs/spark-small.conf",
         env_vars={
@@ -33,8 +33,7 @@ with DAG(
             "spark.sql.catalog.nessie.ref": "dev",
             "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
             "spark.openlineage.namespace": "bronze_ingestion",
-            "spark.openlineage.appName": app_name,
-            "spark.jars.ivy": "/tmp/.ivy2"
+            "spark.openlineage.appName": hp.formatDagBronzeTaskName(dag_domain)
         },
         verbose=True,
     )
