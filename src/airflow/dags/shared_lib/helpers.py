@@ -22,7 +22,6 @@ def format_etl_gold_dag_task_id(domain: str) -> str:
     domain = domain.replace("-", "_").replace(" ", "_")
     return f"publish_{domain}__gold"
 
-
 def format_etl_gold_dag_task_name(domain: str) -> str:
     domain = domain.replace("_", "-").replace(" ", "-")
     return f"publishing-{domain}--gold"

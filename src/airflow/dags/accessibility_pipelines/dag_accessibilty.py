@@ -12,7 +12,7 @@ with DAG(
     catchup=False,
     tags=h.generate_etl_dag_tags(dag_domain),
 ) as dag:
-    ingest_task = SparkSubmitOperator(
+    bronze_task = SparkSubmitOperator(
         task_id=h.format_etl_bronze_dag_task_id(dag_domain),
         name=h.format_etl_bronze_dag_task_name(dag_domain),
         conn_id="spark_default",
