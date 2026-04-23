@@ -11,8 +11,9 @@ dfo = spark.sql(f"SELECT * FROM {table}")
 df = (
     dfo
     .drop("commentaire", "accessibility_level_name", "ingestion_date")
-    .withColumn("latitude", F.split(F.col("stop_point_geopoint"), ",").getItem(0).cast("double"))
-    .withColumn("longitude", F.split(F.col("stop_point_geopoint"), ",").getItem(1).cast("double"))
+    .withColumn("stop_point_latitude", F.split(F.col("stop_point_geopoint"), ",").getItem(0).cast("double"))
+    .withColumn("stop_point_longitude", F.split(F.col("stop_point_geopoint"), ",").getItem(1).cast("double"))
+    .drop("stop_point_geopoint")
 )
 
 df.show(5)
