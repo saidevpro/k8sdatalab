@@ -4,13 +4,12 @@ from airflow import DAG
 from airflow.providers.standard.operators.bash import BashOperator
 
 with DAG(
-    dag_id="bootstrap_nessie_namespaces",
+    dag_id="bootstrap_nessie",
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
     tags=["bootstrap", "nessie"],
 ) as dag:
-
     ensure_nessie_namespaces = BashOperator(
         task_id="ensure_nessie_namespaces_main_and_dev",
         bash_command="""
