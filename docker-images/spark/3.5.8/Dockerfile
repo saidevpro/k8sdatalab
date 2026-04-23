@@ -37,7 +37,6 @@ RUN pip3 install --no-cache-dir \
     pandas \
     pyarrow
 
-    
 COPY ${COMPONENT} /app/spark/confs
 COPY src/spark/jobs /opt/spark/jobs
 
