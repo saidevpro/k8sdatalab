@@ -65,10 +65,10 @@ jobs:
           echo "Plan:"
           jq . <<<"$plan"
 
-          matrix_base=$(jq   -c '.base'    <<<"$plan")
+          matrix_base=$(jq    -c '.base'    <<<"$plan")
           matrix_derived=$(jq -c '.derived' <<<"$plan")
-          has_base=$(jq     -r '(.base.include    | length) > 0' <<<"$plan")
-          has_derived=$(jq  -r '(.derived.include | length) > 0' <<<"$plan")
+          has_base=$(jq    -r '(.base.include    | length) > 0' <<<"$plan")
+          has_derived=$(jq -r '(.derived.include | length) > 0' <<<"$plan")
 
           {
             echo "matrix_base=$matrix_base"
@@ -81,7 +81,6 @@ jobs:
   # 2. Build base images (no dependency on other images in this repo)
   # -------------------------------------------------------------------------
   build-base:
-    name: ${{ matrix.image }}:${{ matrix.version }}
     needs: detect
     if: needs.detect.outputs.has_base == 'true'
     runs-on: ubuntu-latest
@@ -101,7 +100,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build ${{ matrix.image }}:${{ matrix.version }}
         uses: docker/build-push-action@v6
         with:
           context:    ${{ matrix.context }}
@@ -119,7 +118,6 @@ jobs:
   #    Runs AFTER build-base so the `FROM` reference resolves to the new tag.
   # -------------------------------------------------------------------------
   build-derived:
-    name: ${{ matrix.image }}:${{ matrix.version }}
     needs: [detect, build-base]
     if: |
       !cancelled()
@@ -142,7 +140,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build ${{ matrix.image }}:${{ matrix.version }}
         uses: docker/build-push-action@v6
         with:
           context:    ${{ matrix.context }}
