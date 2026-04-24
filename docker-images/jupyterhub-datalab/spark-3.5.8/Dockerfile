@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install --no-cache-dir \
+    pyspark==3.5.8 \
     jupyterlab==4.3.4 \
     jupyterhub \
     jupyterlab-git \
