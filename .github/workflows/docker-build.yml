@@ -122,7 +122,8 @@ jobs:
     name: ${{ matrix.image }}:${{ matrix.version }}
     needs: [detect, build-base]
     if: |
-      needs.detect.outputs.has_derived == 'true'
+      !cancelled()
+      && needs.detect.outputs.has_derived == 'true'
       && (needs.build-base.result == 'success' || needs.build-base.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
