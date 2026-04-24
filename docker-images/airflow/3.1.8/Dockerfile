@@ -17,7 +17,6 @@ ENV PATH=${JAVA_HOME}/bin:${SPARK_HOME}/bin:${PATH}
 
 USER airflow
 
-
 RUN pip install --no-cache-dir \
     "apache-airflow-providers-apache-spark" \
     "apache-airflow-providers-amazon"
