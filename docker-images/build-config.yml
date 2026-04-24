@@ -1,24 +1,17 @@
 # Declarative catalog of container images built from this repo.
 #
 # Images are pushed to Docker Hub as: $DOCKERHUB_USERNAME/<image>:<version>
-# (the username comes from the DOCKERHUB_USERNAME secret, not this file)
 #
 # Folder convention: docker-images/<image>/<version>/Dockerfile
-# (override with `dockerfile:` per image if needed)
 #
 # Fields:
-#   image              (required)  Image name. Drives the folder: docker-images/<image>/<version>/
+#   image              (required)  Image name.
 #   version            (required)  Image tag.
-#   context            (optional)  Docker build context. Default: "."
-#   dockerfile         (optional)  Path to Dockerfile. Default: docker-images/<image>/<version>/Dockerfile
-#   platforms          (optional)  Target platforms.    Default: linux/amd64
-#   depends_on         (optional)  Paths (files or folders) OUTSIDE the image folder
-#                                  that the Dockerfile COPYs from. Changes to any of
-#                                  these paths trigger a rebuild.
-#   depends_on_images  (optional)  List of "image:version" entries referring to OTHER
-#                                  images in this same config that this image uses
-#                                  as a base (`FROM`). Enforces build ordering AND
-#                                  triggers a rebuild when the base rebuilds.
+#   context            (optional)  Docker build context.       Default: "."
+#   dockerfile         (optional)  Path to Dockerfile.         Default: docker-images/<image>/<version>/Dockerfile
+#   platforms          (optional)  Target platforms.           Default: linux/amd64
+#   depends_on         (optional)  External paths COPY'd into the image. Changes trigger rebuild.
+#   depends_on_images  (optional)  Other in-repo images this FROMs. Drives build ordering and transitive rebuilds.
 
 images:
   - image: spark-base

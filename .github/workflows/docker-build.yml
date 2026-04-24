@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: 'Force rebuild: "all" or comma-separated "image:version" (e.g. "spark:3.5.8,jupyterhub-spark:latest")'
+        description: 'Force rebuild: "all" or comma-separated "image:version" (e.g. "spark:3.5.8,airflow:3.1.8")'
         required: false
         default: ''
 
@@ -18,16 +18,22 @@ concurrency:
 
 jobs:
   # -------------------------------------------------------------------------
-  # 1. Detect which images need rebuilding
+  # 1. Detect which images need rebuilding and at which dependency level
   # -------------------------------------------------------------------------
   detect:
     name: Plan builds
     runs-on: ubuntu-latest
     outputs:
-      matrix_base:    ${{ steps.plan.outputs.matrix_base }}
-      matrix_derived: ${{ steps.plan.outputs.matrix_derived }}
-      has_base:       ${{ steps.plan.outputs.has_base }}
-      has_derived:    ${{ steps.plan.outputs.has_derived }}
+      matrix_level_0: ${{ steps.plan.outputs.matrix_level_0 }}
+      matrix_level_1: ${{ steps.plan.outputs.matrix_level_1 }}
+      matrix_level_2: ${{ steps.plan.outputs.matrix_level_2 }}
+      matrix_level_3: ${{ steps.plan.outputs.matrix_level_3 }}
+      matrix_level_4: ${{ steps.plan.outputs.matrix_level_4 }}
+      has_level_0:    ${{ steps.plan.outputs.has_level_0 }}
+      has_level_1:    ${{ steps.plan.outputs.has_level_1 }}
+      has_level_2:    ${{ steps.plan.outputs.has_level_2 }}
+      has_level_3:    ${{ steps.plan.outputs.has_level_3 }}
+      has_level_4:    ${{ steps.plan.outputs.has_level_4 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,91 +71,65 @@ jobs:
           echo "Plan:"
           jq . <<<"$plan"
 
-          matrix_base=$(jq    -c '.base'    <<<"$plan")
-          matrix_derived=$(jq -c '.derived' <<<"$plan")
-          has_base=$(jq    -r '(.base.include    | length) > 0' <<<"$plan")
-          has_derived=$(jq -r '(.derived.include | length) > 0' <<<"$plan")
-
-          {
-            echo "matrix_base=$matrix_base"
-            echo "matrix_derived=$matrix_derived"
-            echo "has_base=$has_base"
-            echo "has_derived=$has_derived"
-          } >> "$GITHUB_OUTPUT"
+          for i in 0 1 2 3 4; do
+            m=$(jq -c ".level_$i" <<<"$plan")
+            h=$(jq -r "(.level_$i.include | length) > 0" <<<"$plan")
+            echo "matrix_level_$i=$m" >> "$GITHUB_OUTPUT"
+            echo "has_level_$i=$h"    >> "$GITHUB_OUTPUT"
+          done
 
   # -------------------------------------------------------------------------
-  # 2. Build base images (no dependency on other images in this repo)
+  # 2..6. Build each dependency level in order. Level N waits for all
+  #       earlier levels; failure at any ancestor level cascades via !failure().
   # -------------------------------------------------------------------------
-  build-base:
+  build-level-0:
     needs: detect
-    if: needs.detect.outputs.has_base == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.detect.outputs.matrix_base) }}
-    steps:
-      - uses: actions/checkout@v4
+    if: needs.detect.outputs.has_level_0 == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix_level_0 }}
+    secrets: inherit
 
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build ${{ matrix.image }}:${{ matrix.version }}
-        uses: docker/build-push-action@v6
-        with:
-          context:    ${{ matrix.context }}
-          file:       ${{ matrix.dockerfile }}
-          platforms:  ${{ matrix.platforms }}
-          push:       ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}-${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.version }}
-          cache-to:   type=gha,scope=${{ matrix.image }}-${{ matrix.version }},mode=max
-
-  # -------------------------------------------------------------------------
-  # 3. Build derived images (FROM another image built above)
-  #    Runs AFTER build-base so the `FROM` reference resolves to the new tag.
-  # -------------------------------------------------------------------------
-  build-derived:
-    needs: [detect, build-base]
+  build-level-1:
+    needs: [detect, build-level-0]
     if: |
       !cancelled()
-      && needs.detect.outputs.has_derived == 'true'
-      && (needs.build-base.result == 'success' || needs.build-base.result == 'skipped')
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.detect.outputs.matrix_derived) }}
-    steps:
-      - uses: actions/checkout@v4
+      && !failure()
+      && needs.detect.outputs.has_level_1 == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix_level_1 }}
+    secrets: inherit
 
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+  build-level-2:
+    needs: [detect, build-level-0, build-level-1]
+    if: |
+      !cancelled()
+      && !failure()
+      && needs.detect.outputs.has_level_2 == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix_level_2 }}
+    secrets: inherit
 
-      - name: Login to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+  build-level-3:
+    needs: [detect, build-level-0, build-level-1, build-level-2]
+    if: |
+      !cancelled()
+      && !failure()
+      && needs.detect.outputs.has_level_3 == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix_level_3 }}
+    secrets: inherit
 
-      - name: Build ${{ matrix.image }}:${{ matrix.version }}
-        uses: docker/build-push-action@v6
-        with:
-          context:    ${{ matrix.context }}
-          file:       ${{ matrix.dockerfile }}
-          platforms:  ${{ matrix.platforms }}
-          push:       ${{ github.event_name != 'pull_request' }}
-          pull:       true   # pull fresh base image that was just pushed
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ matrix.version }}-${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.version }}
-          cache-to:   type=gha,scope=${{ matrix.image }}-${{ matrix.version }},mode=max
+  build-level-4:
+    needs: [detect, build-level-0, build-level-1, build-level-2, build-level-3]
+    if: |
+      !cancelled()
+      && !failure()
+      && needs.detect.outputs.has_level_4 == 'true'
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      matrix: ${{ needs.detect.outputs.matrix_level_4 }}
+    secrets: inherit
