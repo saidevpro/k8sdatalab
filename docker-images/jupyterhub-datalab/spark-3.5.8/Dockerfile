@@ -28,4 +28,5 @@ RUN useradd -m -s /bin/bash -u ${NB_UID} ${NB_USER} \
 
 USER ${NB_USER}
 
+
 WORKDIR ${HOME}
