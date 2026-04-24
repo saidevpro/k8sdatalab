@@ -27,7 +27,12 @@ images:
       - src/spark/jobs
       - .confs/spark
 
-  - image: jupyterhub-spark
+  - image: jupyterhub-datalab
     version: spark-3.5.8
+    depends_on_images:
+      - spark:3.5.8
+
+  - image: airflow
+    version: 3.1.8
     depends_on_images:
       - spark:3.5.8
