@@ -31,6 +31,7 @@ RUN pip install --no-cache-dir \
      pyspark==3.5.8 \
      jupyterlab==4.3.4 \
      jupyterhub \
+     boto3 \
      jupyterlab-git \
      jupyterlab-night \
      theme-darcula \
