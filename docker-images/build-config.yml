@@ -21,8 +21,13 @@
 #                                  triggers a rebuild when the base rebuilds.
 
 images:
+  - image: spark-base
+    version: 3.5.8
+
   - image: spark
     version: 3.5.8
+    depends_on_images:
+      - spark-base:3.5.8
     depends_on:
       - src/spark/jobs
       - .confs/spark
