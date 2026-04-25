@@ -104,7 +104,7 @@ calendar_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=calendar_df,
     dest_table=f"{nessie_catalog_namespace}.calendars"
 )
 
@@ -120,7 +120,7 @@ calendar_dates_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=calendar_dates_df,
     dest_table=f"{nessie_catalog_namespace}.calendar_dates"
 )
 
@@ -136,7 +136,7 @@ stops_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=stops_df,
     dest_table=f"{nessie_catalog_namespace}.stops"
 )
 
@@ -152,7 +152,7 @@ stop_times_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=stop_times_df,
     dest_table=f"{nessie_catalog_namespace}.stop_times"
 )
 
@@ -168,7 +168,7 @@ trips_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=trips_df,
     dest_table=f"{nessie_catalog_namespace}.trips"
 )
 
@@ -184,7 +184,7 @@ routes_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=routes_df,
     dest_table=f"{nessie_catalog_namespace}.routes"
 )
 
@@ -200,7 +200,7 @@ pathways_df = (
 
 createOrOverwritePartitions(
     sparkSession=spark,
-    df=transfers_df,
+    df=pathways_df,
     dest_table=f"{nessie_catalog_namespace}.pathways"
 )
 
