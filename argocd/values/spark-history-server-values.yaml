@@ -17,14 +17,14 @@ resources:
 
 spark:
   historyServer:
-    cleaner:
+    cleaner:<
       maxAge: 14d
     ui:
       port: 18080
     logDirectory: "s3a://spark-logs/"
 
 s3:
-  endpoint: ""
+  endpoint: "http://minio.data-platform.svc.cluster.local:9000"
   bucket: "spark-logs"
   existingSecret: "spark-logs-s3-credentials"
   existingSecretAccessKeyKey: "accesskey"
