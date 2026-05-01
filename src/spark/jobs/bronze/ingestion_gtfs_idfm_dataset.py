@@ -8,6 +8,7 @@ from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp
 
+
 def createOrOverwritePartitions(sparkSession, df, dest_table):
     if not sparkSession.catalog.tableExists(dest_table):
         (
@@ -25,10 +26,11 @@ def createOrOverwritePartitions(sparkSession, df, dest_table):
             .overwritePartitions()
         )
 
+
 nessie_catalog_namespace = "nessie.bronze"
 PRIM_DATASET_URI = os.getenv("PRIM_DATASET_URI")
-ENDPOINT="/offre-horaires-tc-gtfs-idfm/exports/json"
-PRIM_TOKEN=os.getenv("PRIM_TOKEN")
+ENDPOINT = "/offre-horaires-tc-gtfs-idfm/exports/json"
+PRIM_TOKEN = os.getenv("PRIM_TOKEN")
 
 headers = {
     "Authorization": f"apikey {PRIM_TOKEN}",
@@ -64,13 +66,22 @@ s3 = boto3.client(
 
 uploaded = []
 with zipfile.ZipFile(zip_bytes) as zf:
-    for member in zf.namelist():
-        if not member.endswith(".txt"):
+    for info in zf.infolist():
+        if info.is_dir():
             continue
-        with zf.open(member) as f:
-            key = f"{s3_prefix}/{member}"
-            s3.upload_fileobj(f, tmp_bucket, key)
-            uploaded.append(f"s3a://{tmp_bucket}/{key}")
+        if not info.filename.endswith(".txt"):
+            continue
+
+        key = f"{s3_prefix}/{info.filename}"
+        data = zf.read(info.filename)
+
+        s3.put_object(
+            Bucket=tmp_bucket,
+            Key=key,
+            Body=data,
+            ContentLength=len(data),
+        )
+        uploaded.append(f"s3a://{tmp_bucket}/{key}")
 
 print(f"Uploaded {len(uploaded)} files")
 
@@ -80,8 +91,8 @@ spark = SparkSession.builder.getOrCreate()
 transfers_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/transfers.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -96,8 +107,8 @@ createOrOverwritePartitions(
 calendar_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/calendar.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -112,8 +123,8 @@ createOrOverwritePartitions(
 calendar_dates_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/calendar_dates.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -128,8 +139,8 @@ createOrOverwritePartitions(
 stops_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/stops.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -144,8 +155,8 @@ createOrOverwritePartitions(
 stop_times_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/stop_times.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -160,8 +171,8 @@ createOrOverwritePartitions(
 trips_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/trips.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -176,8 +187,8 @@ createOrOverwritePartitions(
 routes_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/routes.txt")
     .withColumn("ingestion_date", current_timestamp())
 )
@@ -192,8 +203,8 @@ createOrOverwritePartitions(
 pathways_df = (
     spark.read
     .option("header", "true")
-    .option("inferSchema", "true")   
-    .option("delimiter", ",")        
+    .option("inferSchema", "true")
+    .option("delimiter", ",")
     .csv(f"s3a://{tmp_bucket}/{s3_prefix}/pathways.txt")
     .withColumn("ingestion_date", current_timestamp())
 )

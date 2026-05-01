@@ -18,7 +18,7 @@ with DAG(
         conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_gtfs_idfm_dataset.py",
         deploy_mode="client",
-        properties_file="/app/spark/confs/spark-small.conf",
+        properties_file="/app/spark/confs/spark-medium.conf",
         env_vars={
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "PRIM_TOKEN": "{{ var.value.PRIM_TOKEN }}",
