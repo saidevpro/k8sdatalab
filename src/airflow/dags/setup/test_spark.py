@@ -29,5 +29,8 @@ with DAG(
             "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
             "spark.sql.catalog.nessie.ref": "dev",
             "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+
+            "spark.eventLog.enabled": "true",
+            "spark.eventLog.dir": "s3a://spark-logs/eventlogs/",
         }
     )
