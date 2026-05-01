@@ -22,6 +22,11 @@ with DAG(
             "--rows", "10",
         ],
         conf={
+            "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
+            "spark.kubernetes.namespace": "spark-jobs",
+            "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
+            "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
+            "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
             "spark.sql.catalog.nessie.ref": "dev",
             "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
         }
