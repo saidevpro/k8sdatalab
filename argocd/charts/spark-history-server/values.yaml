@@ -1,0 +1,184 @@
+# Default values for spark-history-server
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: apache/spark
+  pullPolicy: IfNotPresent
+  tag: "3.5.1"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsUser: 185
+  runAsGroup: 185
+  fsGroup: 185
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 185
+
+service:
+  type: ClusterIP
+  port: 18080
+  targetPort: 18080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: spark-history.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: spark-history-tls
+  #    hosts:
+  #      - spark-history.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Spark History Server configuration
+spark:
+  historyServer:
+    # Enable cleaner to automatically delete old logs
+    cleaner:
+      enabled: true
+      interval: 1d
+      maxAge: 7d
+
+    # UI configuration
+    ui:
+      port: 18080
+
+    # Log directory in S3
+    logDirectory: "s3a://spark-logs/"
+
+    # Additional Spark configuration
+    extraConf: {}
+      # spark.hadoop.fs.s3a.fast.upload: "true"
+      # spark.hadoop.fs.s3a.multipart.size: "104857600"
+      # spark.hadoop.fs.s3a.fast.upload.buffer: "bytebuffer"
+
+# S3 Configuration
+s3:
+  enabled: true
+
+  # S3 endpoint (leave empty for AWS S3, or specify for MinIO/compatible services)
+  endpoint: ""
+  # Example for MinIO: http://minio.minio.svc.cluster.local:9000
+
+  # S3 bucket for Spark event logs
+  bucket: "spark-logs"
+
+  # S3 credentials (can be provided via existingSecret)
+  accessKeyId: ""
+  secretAccessKey: ""
+
+  # Use existing secret for S3 credentials
+  existingSecret: ""
+  existingSecretAccessKeyKey: "accesskey"
+  existingSecretSecretKeyKey: "secretkey"
+
+  # S3A configuration
+  pathStyleAccess: true
+  ssl:
+    enabled: false
+
+  # Additional S3 configuration
+  extraConf: {}
+    # fs.s3a.connection.maximum: "100"
+    # fs.s3a.threads.max: "256"
+    # fs.s3a.connection.ssl.enabled: "false"
+
+# Environment variables
+env: []
+  # - name: CUSTOM_VAR
+  #   value: "custom-value"
+
+# Additional environment variables from secrets/configmaps
+envFrom: []
+  # - secretRef:
+  #     name: my-secret
+  # - configMapRef:
+  #     name: my-configmap
+
+# Volume mounts for additional configuration
+extraVolumes: []
+  # - name: custom-config
+  #   configMap:
+  #     name: custom-spark-config
+
+extraVolumeMounts: []
+  # - name: custom-config
+  #   mountPath: /opt/spark/conf/custom
+
+# Liveness probe
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# Readiness probe
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# ServiceMonitor for Prometheus (if using prometheus-operator)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  annotations: {}

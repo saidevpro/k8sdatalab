@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "spark-history-server.fullname" . }}
+  labels:
+    {{- include "spark-history-server.labels" . | nindent 4 }}
+data:
+  spark-defaults.conf: |
+    # Spark History Server Configuration
+    spark.history.fs.logDirectory={{ .Values.spark.historyServer.logDirectory }}
+    spark.history.ui.port={{ .Values.spark.historyServer.ui.port }}
+
+    {{- if .Values.spark.historyServer.cleaner.enabled }}
+    # Log cleaner configuration
+    spark.history.fs.cleaner.enabled=true
+    spark.history.fs.cleaner.interval={{ .Values.spark.historyServer.cleaner.interval }}
+    spark.history.fs.cleaner.maxAge={{ .Values.spark.historyServer.cleaner.maxAge }}
+    {{- end }}
+
+    {{- if .Values.s3.enabled }}
+    # S3A Configuration
+    {{- if .Values.s3.endpoint }}
+    spark.hadoop.fs.s3a.endpoint={{ .Values.s3.endpoint }}
+    {{- end }}
+    spark.hadoop.fs.s3a.path.style.access={{ .Values.s3.pathStyleAccess }}
+    spark.hadoop.fs.s3a.connection.ssl.enabled={{ .Values.s3.ssl.enabled }}
+    spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+
+    # S3A Performance tuning
+    spark.hadoop.fs.s3a.fast.upload=true
+    spark.hadoop.fs.s3a.multipart.size=104857600
+    spark.hadoop.fs.s3a.fast.upload.buffer=bytebuffer
+    spark.hadoop.fs.s3a.connection.maximum=100
+    spark.hadoop.fs.s3a.threads.max=256
+
+    {{- with .Values.s3.extraConf }}
+    {{- range $key, $value := . }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+
+    # Additional Spark configuration
+    {{- with .Values.spark.historyServer.extraConf }}
+    {{- range $key, $value := . }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+    {{- end }}

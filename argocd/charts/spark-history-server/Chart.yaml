@@ -1,0 +1,16 @@
+apiVersion: v2
+name: spark-history-server
+description: A Helm chart for Spark History Server with S3 support
+type: application
+version: 1.0.0
+appVersion: "3.5.1"
+keywords:
+  - spark
+  - history-server
+  - s3
+  - analytics
+home: https://spark.apache.org/
+sources:
+  - https://github.com/apache/spark
+maintainers:
+  - name: Platform Team
