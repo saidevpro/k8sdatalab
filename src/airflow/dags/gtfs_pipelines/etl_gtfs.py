@@ -1,9 +1,40 @@
 from datetime import datetime
 from airflow import DAG
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.utils.task_group import TaskGroup
 import shared_lib.helpers as h
 
 dag_domain = "gtfs"
+
+COMMON_CONF = {
+    "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
+    "spark.kubernetes.namespace": "spark-jobs",
+    "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
+    "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
+    "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
+    "spark.sql.catalog.nessie.ref": "dev",
+    "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+}
+
+COMMON_ENV = {
+    "MINIO_URL": "{{ var.value.MINIO_URL }}",
+    "MINIO_ACCESS_KEY": "{{ var.value.MINIO_ACCESS_KEY }}",
+    "MINIO_SECRET_KEY": "{{ var.value.MINIO_SECRET_KEY }}",
+}
+
+# Silver tables to process — one Spark job per table
+SILVER_TABLES = [
+    "calendar_dates",
+    "calendars",
+    "trips",
+    "pathways",
+    "stop_times",
+    "routes",
+    "wheelchairs",
+    "stop_entrances",
+    "stations",
+    "stop_points",
+]
 
 with DAG(
     dag_id=h.format_etl_dag_id(dag_domain),
@@ -22,20 +53,33 @@ with DAG(
         env_vars={
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "PRIM_TOKEN": "{{ var.value.PRIM_TOKEN }}",
-            "MINIO_URL": "{{ var.value.MINIO_URL }}",
-            "MINIO_ACCESS_KEY": "{{ var.value.MINIO_ACCESS_KEY }}",
-            "MINIO_SECRET_KEY": "{{ var.value.MINIO_SECRET_KEY }}",
+            **COMMON_ENV,
         },
         conf={
-            "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
-            "spark.kubernetes.namespace": "spark-jobs",
-            "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
-            "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
-            "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
-            "spark.sql.catalog.nessie.ref": "dev",
-            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+            **COMMON_CONF,
             "spark.openlineage.namespace": "bronze_ingestion",
-            "spark.openlineage.appName": h.format_etl_bronze_dag_task_name(dag_domain)
+            "spark.openlineage.appName": h.format_etl_bronze_dag_task_name(dag_domain),
         },
         verbose=True,
     )
+
+    with TaskGroup(group_id="silver_tasks") as silver_task_group:
+        for table in SILVER_TABLES:
+            table_domain = f"{dag_domain}_{table}"
+            SparkSubmitOperator(
+                task_id=h.format_etl_silver_dag_task_id(table_domain),
+                name=h.format_etl_bronze_dag_task_name(table_domain),
+                conn_id="spark_local",
+                application=f"local:///opt/spark/jobs/silver/gtfs/transform_{table}.py",
+                deploy_mode="client",
+                properties_file="/app/spark/confs/spark-small.conf",
+                env_vars=COMMON_ENV,
+                conf={
+                    **COMMON_CONF,
+                    "spark.openlineage.namespace": "silver_ingestion",
+                    "spark.openlineage.appName": f"gtfs_silver_{table}",
+                },
+                verbose=True,
+            )
+
+    bronze_task >> silver_task_group
