@@ -17,7 +17,7 @@ resources:
 
 spark:
   historyServer:
-    cleaner:<
+    cleaner:
       maxAge: 14d
     ui:
       port: 18080
