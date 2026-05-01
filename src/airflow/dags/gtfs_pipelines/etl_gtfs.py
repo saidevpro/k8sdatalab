@@ -15,7 +15,7 @@ with DAG(
     bronze_task = SparkSubmitOperator(
         task_id=h.format_etl_bronze_dag_task_id(dag_domain),
         name=h.format_etl_bronze_dag_task_name(dag_domain),
-        conn_id="spark_local",
+        conn_id="spark_default",
         application="local:///opt/spark/jobs/bronze/ingestion_gtfs_idfm_dataset.py",
         deploy_mode="client",
         properties_file="/app/spark/confs/spark-small.conf",
