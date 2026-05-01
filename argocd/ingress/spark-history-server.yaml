@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: spark-history-server
+  namespace: data-platform
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`history-server.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: spark-history-server
+          port: 18080
+  tls:
+    secretName: wildcard-tls
