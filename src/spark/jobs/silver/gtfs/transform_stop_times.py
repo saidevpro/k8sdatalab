@@ -32,7 +32,7 @@ stop_times = (
 
 stop_times.show(5)
 
-stop_times_df.createOrReplaceTempView("stop_times_staging")
+stop_times.createOrReplaceTempView("stop_times_staging")
 
 spark.sql("""
 CREATE TABLE IF NOT EXISTS nessie.silver.stop_times (
