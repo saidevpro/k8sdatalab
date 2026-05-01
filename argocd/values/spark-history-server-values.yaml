@@ -21,7 +21,7 @@ spark:
       maxAge: 14d
     ui:
       port: 18080
-    logDirectory: "s3a://spark-logs/"
+    logDirectory: "s3a://spark-logs/eventlogs/"
 
 s3:
   endpoint: "http://minio.data-platform.svc.cluster.local:9000"
