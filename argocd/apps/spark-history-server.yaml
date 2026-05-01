@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spark-history-server
+spec:
+  project: lab-system
+  source:
+    repoURL: https://github.com/saidevpro/k8sdatalab
+    targetRevision: main
+    path: argocd/charts/spark-history-server
+    helm:
+      valueFiles:
+        - ../../values/spark-history-server-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: data-platform
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

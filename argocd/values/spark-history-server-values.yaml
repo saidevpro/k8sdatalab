@@ -1,0 +1,31 @@
+image:
+  repository: saidsow/spark
+  pullPolicy: IfNotPresent
+  tag: "3.5.8"
+
+serviceAccount:
+  create: true
+  name: "spark-history-server"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+spark:
+  historyServer:
+    cleaner:
+      maxAge: 14d
+    ui:
+      port: 18080
+    logDirectory: "s3a://spark-logs/"
+
+s3:
+  endpoint: ""
+  bucket: "spark-logs"
+  existingSecret: "spark-logs-s3-credentials"
+  existingSecretAccessKeyKey: "accesskey"
+  existingSecretSecretKeyKey: "secretkey"
