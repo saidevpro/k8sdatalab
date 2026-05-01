@@ -4,6 +4,13 @@ webserverSecretKey: "ca40912fb2205b9fadc2d4174fb90f331bbcde09e0805da8503a2272b30
 
 fernetKeySecretName: airflow-fernet-key
 
+config:
+  logging:
+    remote_logging: "True"
+    remote_base_log_folder: "s3://airflow-logs/logs"
+    remote_log_conn_id: "minio_logs"
+    encrypt_s3_logs: "False"
+
 images:
   airflow:
     repository: saidsow/airflow
