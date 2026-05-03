@@ -23,7 +23,7 @@ with DAG(
             "NESSIE_NAMESPACE": "bronze",
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
-            "DATASET_ENDPOINT": "/accessibilite-en-gare/exports/csv"
+            "DATASET": "accessibilite-en-gare"
         },
         conf={
             "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
@@ -38,7 +38,7 @@ with DAG(
         },
         verbose=True,
     )
-    
+
     silver_task = SparkSubmitOperator(
         task_id=h.format_etl_silver_dag_task_id(dag_domain),
         name=h.format_etl_silver_dag_task_name(dag_domain),
@@ -59,5 +59,5 @@ with DAG(
         },
         verbose=True,
     )
-    
+
     bronze_task >> silver_task
