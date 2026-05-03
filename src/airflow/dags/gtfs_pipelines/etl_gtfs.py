@@ -42,7 +42,7 @@ def get_conf(table):
 
 
 def get_conn_id(table):
-    return 'spark_local' if table != 'stop_times' else 'spark_default'
+    return 'spark_local' if table != 'stop_times' else 'spark_cluster'
 
 
 with DAG(
@@ -80,7 +80,6 @@ with DAG(
                 name=h.format_etl_bronze_dag_task_name(table_domain),
                 conn_id=get_conn_id(table),
                 application=f"local:///opt/spark/jobs/silver/gtfs/transform_{table}.py",
-                deploy_mode="client",
                 properties_file=f"/app/spark/confs/{get_conf(table)}.conf",
                 env_vars=COMMON_ENV,
                 conf={
