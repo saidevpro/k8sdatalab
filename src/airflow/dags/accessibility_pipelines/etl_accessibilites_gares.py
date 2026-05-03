@@ -17,7 +17,6 @@ with DAG(
         name=h.format_etl_bronze_dag_task_name(dag_domain),
         conn_id="spark_local",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-        deploy_mode="client",
         properties_file="/app/spark/confs/spark-small.conf",
         env_vars={
             "NESSIE_NAMESPACE": "bronze",
@@ -42,7 +41,7 @@ with DAG(
     silver_task = SparkSubmitOperator(
         task_id=h.format_etl_silver_dag_task_id(dag_domain),
         name=h.format_etl_silver_dag_task_name(dag_domain),
-        conn_id="spark_default",
+        conn_id="spark_cluster",
         application="local:///opt/spark/jobs/silver/transform_accessiblites_gares__silver.py",
         deploy_mode="cluster",
         properties_file="/app/spark/confs/spark-small.conf",

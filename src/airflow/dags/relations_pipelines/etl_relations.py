@@ -17,7 +17,6 @@ with DAG(
         name=h.format_etl_bronze_dag_task_name(dag_domain),
         conn_id="spark_local",
         application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-        deploy_mode="client",
         properties_file="/app/spark/confs/spark-small.conf",
         env_vars={
             "NESSIE_NAMESPACE": "bronze",
