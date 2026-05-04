@@ -19,4 +19,6 @@ RUN curl -L -o /opt/flink/lib/iceberg-aws-bundle-${ICEBERG_VERSION}.jar \
 RUN curl -L -o /opt/flink/lib/flink-sql-connector-kafka-${KAFKA_CONNECTOR_VERSION}.jar \
     https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/${KAFKA_CONNECTOR_VERSION}/flink-sql-connector-kafka-${KAFKA_CONNECTOR_VERSION}.jar
 
+COPY src/flink/jobs /opt/flink/usrlib
+
 USER flink
