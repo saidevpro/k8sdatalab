@@ -34,3 +34,8 @@ images:
     version: 3.1.8
     depends_on_images:
       - spark:3.5.8
+
+  - image: flink
+    version: 1.11.1
+    depends_on:
+      - src/flink/jobs
