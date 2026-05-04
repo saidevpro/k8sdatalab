@@ -25,7 +25,7 @@ spec:
                   name: idfm-api-secret
                   key: IDFM_API_KEY
             - name: IDFM_API_URL
-              value: "https://prim.iledefrance-mobilites.fr/marketplace/disruptions_bulk"
+              value: "https://prim.iledefrance-mobilites.fr/marketplace/disruptions_bulk/disruptions/v2"
             - name: POLL_SECONDS
               value: "3600"
             - name: KAFKA_BOOTSTRAP_SERVERS
