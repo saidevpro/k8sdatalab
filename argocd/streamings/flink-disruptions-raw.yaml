@@ -4,6 +4,7 @@ metadata:
   name: idfm-disruptions-to-iceberg
 spec:
   image: saidsow/flink:2.2.0
+  imagePullPolicy: Always
   flinkVersion: v2_0
   serviceAccount: flink
   mode: native
@@ -34,7 +35,6 @@ spec:
     spec:
       containers:
         - name: flink-main-container
-          imagePullPolicy: Always
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "my-cluster-kafka-bootstrap.idfm.svc.cluster.local:9092"
