@@ -1,9 +1,9 @@
-FROM flink:1.11.1-scala_2.12-java17
+FROM flink:2.2.0-scala_2.12-java11
 
 USER root
 
 ARG ICEBERG_VERSION=1.10.1
-ARG FLINK_VERSION=1.11
+ARG FLINK_VERSION=2.2
 ARG KAFKA_CONNECTOR_VERSION=4.0.1-2.0
 
 RUN apt-get update \
