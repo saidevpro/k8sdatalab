@@ -39,3 +39,8 @@ images:
     version: 2.2.0
     depends_on:
       - src/flink/jobs
+
+  - image: kafka
+    version: 0.1.0
+    depends_on:
+      - src/kafka
