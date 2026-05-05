@@ -38,7 +38,7 @@ spec:
         - name: flink-main-container
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "my-cluster-kafka-bootstrap.idfm.svc.cluster.local:9092"
+              value: "kafka-cluster-kafka-bootstrap.streaming.svc.cluster.local:9092"
             - name: KAFKA_TOPIC
               value: "idfm-disruptions-raw"
             - name: NESSIE_URI
