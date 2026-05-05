@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: flink-disruptions-raw-ui
+  namespace: streaming
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`flink-idfm-disruptions-raw.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: idfm-disruptions-to-iceberg-rest
+          port: 8081
+  tls:
+    secretName: wildcard-tls
