@@ -112,14 +112,11 @@ def publish_event(event):
 
 
 def main():
-    print("Start disruptions producers")
     while True:
         try:
             fetched_at = now_utc()
             payload = fetch_disruptions()
             payload_type, items = extract_items(payload)
-
-            print("payload", payload)
 
             for item in items:
                 raw_json = json.dumps(item, ensure_ascii=False, sort_keys=True)
