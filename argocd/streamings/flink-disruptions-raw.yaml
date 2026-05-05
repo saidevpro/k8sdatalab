@@ -17,6 +17,7 @@ spec:
     state.savepoints.dir: "s3://datalake/warehouse/flink-savepoints/disruptions"
     s3.endpoint: "http://minio.data-platform.svc.cluster.local:9000"
     s3.path.style.access: "true"
+    s3.region: "us-east-1"
     s3.access-key: "Zpw975O18Eh9kFH3ICBa"
     s3.secret-key: "N9K4zKm30IFLGPN6JoBiCNsiQDKhYABao52N3pjM"
 
