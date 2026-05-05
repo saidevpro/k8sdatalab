@@ -16,8 +16,11 @@ spec:
         - name: producer
           image: saidsow/kafka:0.1.0
           imagePullPolicy: Always
-          command: ["python"]
-          args: ["producers/disruptions.py"]
+          command:
+            - "python"
+            - "-u"
+          args:
+            - "/app/producers/disruptions.py"
           env:
             - name: IDFM_API_KEY
               valueFrom:
