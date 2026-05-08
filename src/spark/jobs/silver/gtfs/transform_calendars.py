@@ -11,8 +11,8 @@ WHERE ingestion_date = (
 """)
 
 calendar_df = (
-    calendar_df.withColumn('service_id', F.regexp_extract(
-        F.col('service_id'), r"(\d+)", 1).cast('int'))
+    calendar_df
+    .withColumn("service_id", F.substring_index(F.col("service_id"), ":", -1))
     .withColumn("start_date", F.to_date(F.col("start_date").cast("string"), "yyyyMMdd"))
     .withColumn("end_date", F.to_date(F.col("end_date").cast("string"), "yyyyMMdd"))
     .drop('ingestion_date')
@@ -24,7 +24,7 @@ calendar_df.createOrReplaceTempView("calendars_staging")
 
 spark.sql("""
 CREATE TABLE IF NOT EXISTS nessie.silver.calendars (
-    service_id  INTEGER,
+    service_id  STRING,
     monday      INTEGER,
     tuesday     INTEGER,
     wednesday   INTEGER,

@@ -12,7 +12,7 @@ WHERE ingestion_date = (
 
 trips_df = (
     trips_df.withColumn("route_id", F.split(F.col("route_id"), ":").getItem(1))
-            .withColumn("service_id", F.split(F.col("service_id"), ":").getItem(1))
+            .withColumn("service_id", F.substring_index(F.col("service_id"), ":", -1))
             .withColumn("shape_id", F.split(F.col("shape_id"), ":").getItem(1))
 )
 
