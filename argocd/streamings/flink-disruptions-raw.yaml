@@ -44,7 +44,7 @@ spec:
             - name: NESSIE_URI
               value: "http://nessie.data-platform.svc.cluster.local:19120/api/v1"
             - name: NESSIE_REF
-              value: "main"
+              value: "dev"
             - name: ICEBERG_WAREHOUSE
               value: "s3://datalake/warehouse/"
             - name: S3_ENDPOINT
