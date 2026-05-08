@@ -16,7 +16,7 @@ pools: 1
 ##
 persistence:
   enabled: true
-  size: 10Gi
+  size: 100Gi
   storageClass: "longhorn"
 
 environment:
