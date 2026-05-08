@@ -1,7 +1,7 @@
 apiVersion: flink.apache.org/v1beta1
 kind: FlinkDeployment
 metadata:
-  name: idfm-disruptions-to-iceberg
+  name: flink-idfm-disruptions-raw
 spec:
   image: saidsow/flink:2.2.0
   imagePullPolicy: Always

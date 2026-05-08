@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: idfm-disruptions-producer
+  name: kafka-idfm-disruptions-producer
 spec:
   replicas: 1
   selector:
