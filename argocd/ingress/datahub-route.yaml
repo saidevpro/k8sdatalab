@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: datahub
+  namespace: data-platform
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`datahub.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: datahub-datahub-frontend
+          port: 9002
+  tls:
+    secretName: wildcard-tls
