@@ -10,7 +10,7 @@ global:
       consolidatedUpgrade: true
 
   elasticsearch:
-    host: "opensearch-cluster-master"
+    host: "opensearch-cluster-master.data-platform.svc.cluster.local"
     port: "9200"
     useSSL: "false"
     insecure: "false"
