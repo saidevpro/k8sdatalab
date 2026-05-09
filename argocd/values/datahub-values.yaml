@@ -72,6 +72,11 @@ datahub-frontend:
   service:
     type: ClusterIP
 
+  defaultUserCredentials:
+    randomAdminPassword: false
+    manualValues: |
+      admin:Rcn7ui69ZCV
+
 datahub-mae-consumer:
   enabled: true
 
