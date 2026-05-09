@@ -39,6 +39,20 @@ singleuser:
         mem_limit: "4G"
         mem_guarantee: "1G"
 
+    - display_name: "ML, Pytorch - MLflow"
+      description: "Pytorch, MLflow, boto3"
+      kubespawner_override:
+        image: saidsow/jupyterhub-datalab:ml-pytorch-mlflow
+        cpu_guarantee: 4
+        cpu_limit: 6
+        mem_guarantee: "8G"
+        mem_limit: "10G"
+        environment:
+          MLFLOW_TRACKING_URI: "http://mlflow.mlops.svc.cluster.local:5000"
+          MLFLOW_S3_ENDPOINT_URL: "http://minio.data-platform.svc.cluster.local:9000"
+          AWS_DEFAULT_REGION: "us-east-1"
+          TOKENIZERS_PARALLELISM: "false"
+
   cpu:
     limit: 2
     guarantee: 1
