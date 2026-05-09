@@ -112,6 +112,7 @@ def publish_event(event):
 
 
 def main():
+    print("Start disruptions producers")
     while True:
         try:
             fetched_at = now_utc()
