@@ -30,6 +30,7 @@ artifactRoot:
       keyOfSecretAccessKey: "secretKey"
 
 auth:
+  enabled: true
   existingAdminSecret:
     name: "mlflow-auth-admin"
     usernameKey: "user"
