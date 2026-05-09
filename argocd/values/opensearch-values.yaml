@@ -1,0 +1,27 @@
+clusterName: "opensearch-cluster"
+singleNode: true
+
+replicas: 2
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 2Gi
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+extraEnvs:
+  - name: DISABLE_INSTALL_DEMO_CONFIG
+    value: "true"
+  - name: DISABLE_SECURITY_PLUGIN
+    value: "true"
+
+config:
+  opensearch.yml: |
+    plugins:
+      security:
+        disabled: true
