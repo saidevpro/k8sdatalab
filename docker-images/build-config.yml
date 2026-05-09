@@ -47,3 +47,8 @@ images:
     version: 0.1.0
     depends_on:
       - src/kafka
+
+  - image: mlflow
+    version: 3.7.0
+    depends_on:
+      - src/kafka
