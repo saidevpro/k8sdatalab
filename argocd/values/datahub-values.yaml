@@ -1,0 +1,82 @@
+global:
+  strict_mode: true
+
+  graph_service_impl: elasticsearch
+
+  datahub:
+    version: v1.5.0.1
+    systemUpdate:
+      enabled: true
+      consolidatedUpgrade: true
+
+  elasticsearch:
+    host: "opensearch-cluster-master"
+    port: "9200"
+    useSSL: "false"
+    insecure: "false"
+    skipcheck: "false"
+    engineType: "OPENSEARCH"
+    autoDetect: "false"
+
+  kafka:
+    bootstrap:
+      server: "kafka-cluster-kafka-bootstrap.streaming.svc.cluster.local:9092"
+    schemaregistry:
+      type: INTERNAL
+      configureCleanupPolicy: false
+    precreateTopics: true
+
+  sql:
+    datasource:
+      host: "postgresql-data-platform.data-platform.svc.cluster.local"
+      hostForpostgresqlClient: "postgresql.data-platform.svc.cluster.local"
+      port: "5432"
+      url: "jdbc:postgresql://postgresql-data-platform.data-platform.svc.cluster.local/datahub"
+      driver: "org.postgresql.Driver"
+      database: "datahub"
+      username: "datahub"
+      password:
+        secretRef: datahub-postgresql-secret
+        secretKey: password
+
+datahubSystemUpdate:
+  enabled: true
+  sql:
+    setup:
+      enabled: true
+      createTables: true
+      createDatabase: false
+      createUser: false
+  elasticsearch:
+    setup:
+      enabled: true
+      createUser: false
+
+postgresqlSetupJob:
+  enabled: false
+
+mysqlSetupJob:
+  enabled: false
+
+kafkaSetupJob:
+  enabled: true
+
+elasticsearchSetupJob:
+  enabled: false
+
+datahub-gms:
+  enabled: true
+
+datahub-frontend:
+  enabled: true
+  service:
+    type: ClusterIP
+
+datahub-mae-consumer:
+  enabled: true
+
+datahub-mce-consumer:
+  enabled: true
+
+acryl-datahub-actions:
+  enabled: true
