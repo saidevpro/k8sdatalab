@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: saidsow/mlflow
   tag: 3.7.0
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: ClusterIP
