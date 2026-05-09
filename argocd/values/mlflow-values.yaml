@@ -1,0 +1,48 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mlflow/mlflow
+  tag: v3.0.1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5000
+
+backendStore:
+  databaseMigration: true
+  postgres:
+    enabled: true
+    host: postgresql-data-platform.data-platform.svc.cluster.local
+    port: 5432
+    database: mlflow
+    user: mlflow
+    password: tTmQsWZAQJ6ova6fQk3LVUQmBwtVzxn
+
+artifactRoot:
+  s3:
+    enabled: true
+    bucket: mlflow-artifacts
+    path: ""
+
+extraEnvVars:
+  MLFLOW_S3_ENDPOINT_URL: "http://minio.data-platform.svc.cluster.local:9000"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  AWS_DEFAULT_REGION: "us-east-1"
+  MLFLOW_S3_IGNORE_TLS: "true"
+
+extraArgs:
+  host: "0.0.0.0"
+  port: "5000"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 2Gi
+
+ingress:
+  enabled: false

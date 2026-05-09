@@ -9,16 +9,19 @@ primary:
         CREATE USER airflow WITH PASSWORD 'YJ$fF1&ndM';
         CREATE USER marquez WITH PASSWORD '2j28gK5BL28d';
         CREATE USER nessie WITH PASSWORD 'GZHs5dhB';
+        CREATE USER mlflow WITH PASSWORD 'tTmQsWZAQJ6ova6fQk3LVUQmBwtVzxn';
 
         -- Create database
         CREATE DATABASE airflow OWNER airflow;
         CREATE DATABASE marquez OWNER marquez;
         CREATE DATABASE nessie OWNER nessie;
+        CREATE DATABASE mlflow OWNER mlflow;
 
         -- Config priviledge
         GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow;
         GRANT ALL PRIVILEGES ON DATABASE marquez TO marquez;
         GRANT ALL PRIVILEGES ON DATABASE nessie TO nessie;
+        GRANT ALL PRIVILEGES ON DATABASE mlflow TO mlflow;
   resources:
     requests:
       memory: 256Mi
