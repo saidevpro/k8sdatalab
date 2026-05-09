@@ -30,6 +30,9 @@ images:
     depends_on_images:
       - spark:3.5.8
 
+  - image: jupyterhub-datalab
+    version: ml-pytorch-mlflow
+
   - image: airflow
     version: 3.1.8
     depends_on_images:
