@@ -2,6 +2,9 @@ FROM quay.io/jupyter/pytorch-notebook:python-3.11
 
 USER root
 
+
+ARG ROOT_PATH=docker-images/jupyterhub-datalab/ml-pytorch-mlflow
+
 ARG NB_USER=jovyan
 ARG NB_UID=1000
 
@@ -22,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 USER ${NB_UID}
 
-COPY requirements.txt /tmp/requirements.txt
+COPY ${ROOT_PATH}/requirements.txt /tmp/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir -r /tmp/requirements.txt \
