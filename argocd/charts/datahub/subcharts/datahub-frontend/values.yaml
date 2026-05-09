@@ -1,0 +1,265 @@
+# Default values for datahub-frontend.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+hpa:
+  # If enabled, Horizontal Pod Autoscaler (HPA) will automatically scale the number of replicas based on CPU and memory utilization thresholds.
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 3
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 70
+
+revisionHistoryLimit: 10
+
+image:
+  repository: acryldata/datahub-frontend-react
+  tag:
+  pullPolicy: IfNotPresent
+  # Override the image's command & args with a new one.
+  # This may be necessary for custom startup or shutdown behaviors
+  command:
+  args:
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+terminationGracePeriodSeconds: 120
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+annotations: {}
+
+podAnnotations: {}
+  # co.elastic.logs/enabled: "true"
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+
+priorityClassName:
+
+# Graceful shutdown configuration for spot instance termination
+# When enabled, frontend will stop accepting new requests and drain existing connections before shutdown
+gracefulshutdownEnabled: false
+
+# Duration for Akka coordinated shutdown phases (how long to wait for each phase)
+# Must be less than terminationGracePeriodSeconds (default 120s)
+# Format: Xs (e.g., 10s)
+# Note: Total shutdown time = beforeServiceUnbindTimeout + serviceRequestDoneTimeout + serviceStopTimeout + buffer
+beforeServiceUnbindTimeout: 10s
+
+# Duration to wait for in-flight HTTP requests to complete before forcefully terminating them
+# Set higher than GMS async request timeout (55s) to allow requests to complete naturally
+# Must be less than terminationGracePeriodSeconds (default 120s)
+# Format: Xs (e.g., 65s)
+serviceRequestDoneTimeout: 65s
+
+# Duration to wait for resources and connections to close gracefully
+# Must be less than terminationGracePeriodSeconds (default 120s)
+# Format: Xs (e.g., 15s)
+serviceStopTimeout: 15s
+
+service:
+  type: LoadBalancer # ClusterIP or NodePort
+  port: 9002
+  targetPort: http
+  containerPort: 9002
+  protocol: TCP
+  name: http
+  # Annotations to add to the service, this will help in adding
+  # Internal load balancer or various other annotation support in AWS
+  annotations: {}
+    # service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+  extraLabels: {}
+
+serviceMonitor:
+  create: false
+  extraLabels: {}
+
+ingress:
+  # className: ""
+  enabled: false
+  extraLabels: {}
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths: []
+      redirectPaths: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+  pathType: ImplementationSpecific
+
+auth:
+  sessionTTLHours: "24"
+# OIDC auth based on https://datahubproject.io/docs/authentication/guides/sso/configure-oidc-react
+oidcAuthentication:
+  enabled: false
+  # provider: google/okta/azure/other  <- choose only one
+
+  # clientId: your-client-id
+  # clientSecret: your-client-secret
+  # only needed if you would like to store the client secret in secret
+  # clientSecretRef:
+  #   secretRef: <secret-ref>
+  #   secretKey: <secret-key>
+  # only needed if provider is `other`
+  # discoveryUri: https://my-keycloak.example.com/realms/master/.well-known/openid-configuration
+  # only needed if provider is `okta`
+  # oktaDomain: your-okta-domain.com
+
+  # only needed if provider is `azure`
+  # azureTenantId: your-azure-tenant-id
+  # if needed, it should set meaningful defaults from provider
+  # scope: "openid profile email"
+
+  # Override the base URL used for OIDC redirect URIs.
+  # When not set, the chart builds it from the first ingress host (and basePath if enabled).
+  # oidcBaseUrl: https://example.com/datahub
+
+  # The attribute that will contain the username used on the DataHub platform.
+  # user_name_claim: "email"
+  # A regex string used for extracting the username from the userNameClaim attribute.
+  # user_name_claim_regex: "([^@]+)"
+
+# Configuration for auth cookies, used to share these cookies for their domain with the iFrame in DataHub Chrome extension
+authCookies:
+  sameSite: "LAX"
+  secure: "false"
+
+# Extra labels for Deployment
+extraLabels: {}
+  # owner: myteam
+  # environment: test
+
+# Extra labels for the Pods
+extraPodLabels: {}
+
+# Extra environment variables
+# This will be appended to the current 'env:' key. You can use any of the kubernetes env
+# syntax here
+extraEnvs: []
+  # - name: MY_ENVIRONMENT_VAR
+  #   value: the_value_goes_here
+
+extraVolumes: []
+  # - name: extras
+  #   emptyDir: {}
+
+extraVolumeMounts: []
+  # - name: extras
+  #   mountPath: /usr/share/extras
+  #   readOnly: true
+
+extraInitContainers: []
+
+# Add extra sidecar containers to deployment pod
+extraSidecars: []
+  # - name: my-image-name
+  #   image: my-image
+  #   imagePullPolicy: Always
+
+lifecycle:
+  preStop:
+    exec:
+      # Graceful shutdown: delay before SIGTERM to allow load balancer draining
+      # Fixes race condition where LB still routes traffic after pod removal from endpoints
+      # Timing: 15s preStop + 90s Akka phases (10+65+15) + 15s buffer = 120s total
+      command: ["/bin/sh", "-c", "sleep 15"]
+  # To add a new user to datahub in JAAS config without mounting the user.props file
+  # postStart:
+  #   exec:
+  #     command: ["/bin/sh", "-c", "echo "test_user:password" >> datahub-frontend/conf/user.props"]
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 500m
+  #   memory: 2Gi
+  # requests:
+  #   cpu: 100m
+  #   memory: 1Gi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 4
+
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 4
+
+datahub:
+  play:
+    mem:
+      buffer:
+        size: "10MB"
+global:
+  imageRegistry: "docker.io"
+
+  datahub_analytics_enabled: true
+
+  elasticsearch:
+    host: "elasticsearch"
+    port: "9200"
+
+  kafka:
+    bootstrap:
+      server: "broker:9092"
+
+  datahub:
+    version: head
+    gms:
+      port: "8080"
+    # monitoring: use umbrella global.datahub.monitoring only (do not set here; partial maps drop metricsMode).
+    appVersion: "1.0"
+    frontend:
+      validateSignUpEmail: true
+    metadata_service_authentication:
+      enabled: true
+      systemClientId: "__datahub_system"
+      # systemClientSecret:
+      #  secretRef: <secret-ref>
+      #  secretKey: <secret-key>

@@ -5,3 +5,4 @@ server
 .venv
 .manifests
 .keys
+bash.sh
