@@ -15,7 +15,7 @@ global:
     useSSL: "false"
     insecure: "false"
     skipcheck: "false"
-    engineType: "OPENSEARCH"
+    engineType: "OPENSEARCH_2"
     autoDetect: "false"
 
   kafka:
