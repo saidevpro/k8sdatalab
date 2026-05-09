@@ -30,7 +30,7 @@ global:
     datasource:
       host: "postgresql-data-platform.data-platform.svc.cluster.local"
       hostForpostgresqlClient: "postgresql.data-platform.svc.cluster.local"
-      port: 5432
+      port: "5432"
       url: "jdbc:postgresql://postgresql-data-platform.data-platform.svc.cluster.local:5432/datahub"
       driver: "org.postgresql.Driver"
       database: "datahub"
