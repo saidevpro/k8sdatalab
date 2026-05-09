@@ -47,6 +47,8 @@ extraEnvVars:
   MLFLOW_S3_ENDPOINT_URL: "http://minio.data-platform.svc.cluster.local:9000"
   AWS_DEFAULT_REGION: "us-east-1"
   MLFLOW_S3_IGNORE_TLS: "true"
+  MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow.k8sdatalab.com,mlflow.k8sdatalab.com:443,mlflow.k8sdatalab.com:80,localhost,localhost:*"
+  MLFLOW_SERVER_CORS_ALLOWED_ORIGINS: "https://mlflow.k8sdatalab.com"
 
 extraArgs:
   host: "0.0.0.0"
