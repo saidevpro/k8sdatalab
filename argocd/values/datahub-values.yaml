@@ -1,6 +1,5 @@
 global:
   strict_mode: true
-
   graph_service_impl: elasticsearch
 
   datahub:
@@ -8,6 +7,32 @@ global:
     systemUpdate:
       enabled: true
       consolidatedUpgrade: true
+
+    metadata_service_authentication:
+      enabled: true
+      systemClientId: "__datahub_system"
+
+      systemClientSecret:
+        secretRef: "datahub-auth-secrets"
+        secretKey: "system_client_secret"
+
+      tokenService:
+        signingKey:
+          secretRef: "datahub-auth-secrets"
+          secretKey: "token_service_signing_key"
+        salt:
+          secretRef: "datahub-auth-secrets"
+          secretKey: "token_service_salt"
+
+      provisionSecrets:
+        enabled: false
+
+    encryptionKey:
+      secretRef: "datahub-encryption-secrets"
+      secretKey: "encryption_key_secret"
+
+    provisionSecret:
+      enabled: false
 
   elasticsearch:
     host: "opensearch-cluster-master.data-platform.svc.cluster.local"
