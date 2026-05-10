@@ -77,6 +77,12 @@ datahub-frontend:
     manualValues: |
       admin:Rcn7ui69ZCV
 
+  extraEnvs:
+    - name: AUTH_COOKIE_SAME_SITE
+      value: "LAX"
+    - name: AUTH_COOKIE_SECURE
+      value: "true"
+
 datahub-mae-consumer:
   enabled: true
 
