@@ -97,11 +97,6 @@ datahub-frontend:
   service:
     type: ClusterIP
 
-  defaultUserCredentials:
-    randomAdminPassword: true
-    # manualValues: |
-    #   admin:Rcn7ui69ZCV
-
   extraEnvs:
     - name: AUTH_COOKIE_SAME_SITE
       value: "LAX"
