@@ -6,6 +6,14 @@ image:
 
 versionStoreType: JDBC2
 
+catalog:
+  enabled: true
+  iceberg:
+    defaultWarehouse: warehouse
+    warehouses:
+      - name: warehouse
+        location: s3://datalake/warehouse
+
 jdbc:
   jdbcUrl: jdbc:postgresql://postgresql-data-platform.data-platform.svc.cluster.local:5432/nessie
   secret:
