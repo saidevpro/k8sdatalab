@@ -96,8 +96,10 @@ datahub-frontend:
   enabled: true
   service:
     type: ClusterIP
-    
-  existingGmsSecret: "datahub-gms-secret"
+
+  existingGmsSecret:
+    name: "datahub-gms-secret"
+    key: "datahub.gms.secret"
 
   extraEnvs:
     - name: AUTH_COOKIE_SAME_SITE
