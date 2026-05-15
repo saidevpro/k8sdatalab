@@ -22,7 +22,7 @@ with DAG(
         name=h.format_etl_silver_dag_task_name(dag_domain),
         conn_id="spark_cluster",
         deploy_mode="cluster",
-        application="local:///opt/spark/jobs/silver/disruptions/silver_disruption_messages.py",
+        application="local:///opt/spark/jobs/silver/disruptions/silver_disruptions.py",
         properties_file="/app/spark/confs/spark-small.conf",
         env_vars={
             "SOURCE_TABLE": "nessie.bronze.disruptions",
