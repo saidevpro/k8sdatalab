@@ -33,7 +33,7 @@ with DAG(
         env_vars={
             "KAFKA_BOOTSTRAP_SERVERS": "{{ var.value.KAFKA_BOOTSTRAP_SERVERS }}",
             "KAFKA_TOPIC": "idfm-disruptions-raw",
-            "KAFKA_GROUP_ID": "spark-idfm-disruptions-iceberg-writer",
+            "KAFKA_GROUP_ID_PREFIX": "spark-idfm-disruptions-iceberg-writer",
             "CHECKPOINT_LOCATION": "s3a://spark-checkpoints/bronze/disruptions/",
             "TRIGGER_INTERVAL": "60 seconds",
             "NESSIE_NAMESPACE": "bronze",

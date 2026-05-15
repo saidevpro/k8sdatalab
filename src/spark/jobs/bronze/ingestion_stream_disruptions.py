@@ -8,8 +8,8 @@ from pyspark.sql.types import StringType, StructField, StructType
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "idfm-disruptions-raw")
 KAFKA_STARTING_OFFSETS = os.getenv("KAFKA_STARTING_OFFSETS", "latest")
-KAFKA_GROUP_ID = os.getenv(
-    "KAFKA_GROUP_ID", "spark-idfm-disruptions-iceberg-writer"
+KAFKA_GROUP_ID_PREFIX = os.getenv(
+    "KAFKA_GROUP_ID_PREFIX", "spark-idfm-disruptions-iceberg-writer"
 )
 
 CHECKPOINT_LOCATION = os.getenv("CHECKPOINT_LOCATION")
@@ -73,7 +73,7 @@ def build_stream(spark: SparkSession):
         .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
         .option("subscribe", KAFKA_TOPIC)
         .option("startingOffsets", KAFKA_STARTING_OFFSETS)
-        .option("kafka.group.id", KAFKA_GROUP_ID)
+        .option("groupIdPrefix", KAFKA_GROUP_ID_PREFIX)
         .option("failOnDataLoss", "false")
         .load()
     )
