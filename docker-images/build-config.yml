@@ -50,5 +50,3 @@ images:
 
   - image: mlflow
     version: 3.7.0
-    depends_on:
-      - src/kafka
