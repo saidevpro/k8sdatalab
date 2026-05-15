@@ -55,7 +55,7 @@ zip_bytes = io.BytesIO(resp.content)
 
 tmp_bucket = "tmp-spark"
 run_id = f"{datetime.utcnow():%Y-%m-%dT%H%M%S}-{secrets.token_hex(8)}"
-s3_prefix = f"ingest/{run_id}"
+s3_prefix = f"ingestions/gtfs/{run_id}"
 
 s3 = boto3.client(
     "s3",
