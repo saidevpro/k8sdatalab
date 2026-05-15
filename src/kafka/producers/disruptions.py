@@ -116,6 +116,7 @@ def main():
     while True:
         try:
             fetched_at = now_utc()
+            batch_time = fetched_at.strftime("%Y-%m-%d %H:%M:%S")
             payload = fetch_disruptions()
             payload_type, items = extract_items(payload)
 
@@ -129,6 +130,7 @@ def main():
                     "source": "idfm_disruptions_bulk",
                     "fetched_at": fetched_at.isoformat(),
                     "event_date": fetched_at.date().isoformat(),
+                    "batch_time": batch_time,
                     "raw_json": raw_json,
                 }
 

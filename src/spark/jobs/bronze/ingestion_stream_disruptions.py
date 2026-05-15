@@ -22,6 +22,8 @@ DEST_TABLE = os.getenv(
 )
 
 
+BATCH_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss"
+
 PAYLOAD_SCHEMA = StructType(
     [
         StructField("event_id", StringType(), True),
@@ -29,6 +31,7 @@ PAYLOAD_SCHEMA = StructType(
         StructField("source", StringType(), True),
         StructField("fetched_at", StringType(), True),
         StructField("event_date", StringType(), True),
+        StructField("batch_time", StringType(), True),
         StructField("raw_json", StringType(), True),
     ]
 )
@@ -50,11 +53,12 @@ def ensure_target_table(spark: SparkSession) -> None:
           source STRING,
           fetched_at STRING,
           event_date STRING,
+          batch_time TIMESTAMP,
           raw_json STRING,
           processing_time TIMESTAMP
         )
         USING iceberg
-        PARTITIONED BY (event_date)
+        PARTITIONED BY (hours(batch_time))
         TBLPROPERTIES (
           'format-version' = '2',
           'write.format.default' = 'parquet'
@@ -87,6 +91,9 @@ def build_stream(spark: SparkSession):
             F.col("payload.source").alias("source"),
             F.col("payload.fetched_at").alias("fetched_at"),
             F.col("payload.event_date").alias("event_date"),
+            F.to_timestamp(
+                F.col("payload.batch_time"), BATCH_TIME_FORMAT
+            ).alias("batch_time"),
             F.col("payload.raw_json").alias("raw_json"),
             F.current_timestamp().alias("processing_time"),
         )
