@@ -21,6 +21,7 @@ with DAG(
         env_vars={
             "NESSIE_NAMESPACE": "bronze",
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
+            "PRIM_DATASET_TOKEN": "{{ var.value.PRIM_DATASET_TOKEN }}",
             "DESTINATION_TABLE": "nessie.bronze.elevators",
             "DATASET": "etat-des-ascenseurs"
         },

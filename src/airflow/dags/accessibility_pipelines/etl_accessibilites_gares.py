@@ -22,6 +22,7 @@ with DAG(
             "NESSIE_NAMESPACE": "bronze",
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "DESTINATION_TABLE": "nessie.bronze.accessibility_gares",
+            "PRIM_DATASET_TOKEN": "{{ var.value.PRIM_DATASET_TOKEN }}",
             "DATASET": "accessibilite-en-gare"
         },
         conf={
