@@ -47,8 +47,8 @@ def get_conn_id(table):
 
 with DAG(
     dag_id=h.format_etl_dag_id(dag_domain),
-    start_date=datetime(2026, 1, 1),
-    schedule="@daily",
+    start_date=datetime(2026, 5, 16),
+    schedule="0 */4 * * *",
     catchup=False,
     tags=h.generate_etl_dag_tags(dag_domain),
 ) as dag:
