@@ -16,6 +16,9 @@
     "timonwong.shellcheck",
     "foxundermoon.shell-format"
   ],
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
   "settings": {
     "terminal.integrated.defaultProfile.linux": "bash",
     "ansible.python.interpreterPath": "/usr/bin/python3"
