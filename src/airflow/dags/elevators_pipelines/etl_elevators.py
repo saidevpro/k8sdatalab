@@ -7,7 +7,7 @@ dag_domain = "elevators"
 
 with DAG(
     dag_id=h.format_etl_dag_id(dag_domain),
-    start_date=datetime(2026, 5, 16),
+    start_date=datetime(2026, 1, 1),
     schedule="0 */4 * * *",
     catchup=False,
     tags=h.generate_etl_dag_tags(dag_domain),
