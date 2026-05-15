@@ -58,7 +58,7 @@ def ensure_target_table(spark: SparkSession) -> None:
           processing_time TIMESTAMP
         )
         USING iceberg
-        PARTITIONED BY (hours(batch_time))
+        PARTITIONED BY (days(batch_time))
         TBLPROPERTIES (
           'format-version' = '2',
           'write.format.default' = 'parquet'
