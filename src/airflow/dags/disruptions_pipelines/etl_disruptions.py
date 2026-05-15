@@ -5,7 +5,7 @@ from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOpe
 import shared_lib.helpers as h
 
 
-dag_domain = "stream_disruptions"
+dag_domain = "disruptions"
 
 SPARK_VERSION = "3.5.8"
 SCALA_VERSION = "2.12"
