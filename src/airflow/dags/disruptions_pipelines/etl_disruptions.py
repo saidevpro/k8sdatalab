@@ -1,5 +1,5 @@
 from airflow import DAG
-from datetime import datetime
+from datetime import datetime, timedelta
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 
 import shared_lib.helpers as h
@@ -40,7 +40,7 @@ with DAG(
             "DESTINATION_TABLE": "nessie.bronze.disruptions",
         },
         conf={
-            "spark.kubernetes.container.image": f"saidsow/spark:3.5.8",
+            "spark.kubernetes.container.image": f"saidsow/spark:{SPARK_VERSION}",
             "spark.kubernetes.namespace": "spark-jobs",
             "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
             "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
@@ -50,6 +50,37 @@ with DAG(
             "spark.openlineage.namespace": "bronze_ingestion",
             "spark.openlineage.appName": h.format_etl_bronze_dag_task_name(dag_domain),
         },
-        retries=0,
+        retries=2,
+        retry_delay=timedelta(minutes=5),
+        verbose=True,
+    )
+    silver_stream_task = SparkSubmitOperator(
+        task_id=h.format_etl_silver_dag_task_id(dag_domain),
+        name=h.format_etl_silver_dag_task_name(dag_domain),
+        conn_id="spark_cluster",
+        deploy_mode="cluster",
+        application="local:///opt/spark/jobs/silver/disruptions/silver_disruptions.py",
+        properties_file="/app/spark/confs/spark-small.conf",
+        env_vars={
+            "SOURCE_TABLE": "nessie.bronze.disruptions",
+            "NESSIE_CATALOG": "nessie",
+            "SILVER_NAMESPACE": "silver",
+            "CHECKPOINT_LOCATION": "s3a://spark-checkpoints/silver/disruptions/",
+            "TRIGGER_INTERVAL": "60 seconds",
+            "MAX_FILES_PER_MICRO_BATCH": "100",
+        },
+        conf={
+            "spark.kubernetes.container.image": f"saidsow/spark:{SPARK_VERSION}",
+            "spark.kubernetes.namespace": "spark-jobs",
+            "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
+            "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
+            "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
+            "spark.sql.catalog.nessie.ref": "dev",
+            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+            "spark.openlineage.namespace": "silver_transformation",
+            "spark.openlineage.appName": h.format_etl_silver_dag_task_name(dag_domain),
+        },
+        retries=2,
+        retry_delay=timedelta(minutes=5),
         verbose=True,
     )
