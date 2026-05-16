@@ -2,10 +2,6 @@ auth:
   postgresPassword: "cyKoZ1Cf5wONUdVV8FLrjCBuudSfc"
 
 primary:
-  extraEnvVars:
-    - name: OPENSSL_FIPS
-      value: "0"
-
   initdb:
     scripts:
       init.sql: |
