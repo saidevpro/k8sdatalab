@@ -1,5 +1,6 @@
 mysql:
   enabled: true
+  fullnameOverride: "openmetadata-mysql"
   auth:
     rootPassword: 6LePUIySS8D4
   primary:
