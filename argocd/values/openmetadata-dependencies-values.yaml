@@ -1,0 +1,21 @@
+mysql:
+  enabled: true
+  auth:
+    rootPassword: 6LePUIySS8D4
+  primary:
+    persistence:
+      storageClass: longhorn
+      size: 2Gi
+  initdbScripts:
+    init_openmetadata_db_scripts.sql: |
+      CREATE DATABASE openmetadata_db;
+      CREATE USER 'openmetadata'@'%' IDENTIFIED BY '2vQ3M9Uam0d6';
+      GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata'@'%' WITH GRANT OPTION;
+      commit;
+
+elasticsearch:
+  enabled: false
+airflow:
+  enabled: false
+postgresql:
+  enabled: false

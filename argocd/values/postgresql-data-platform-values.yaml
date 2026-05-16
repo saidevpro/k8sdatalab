@@ -11,6 +11,7 @@ primary:
         CREATE USER nessie WITH PASSWORD 'GZHs5dhB';
         CREATE USER mlflow WITH PASSWORD 'tTmQsWZAQJ6ova6fQk3LVUQmBwtVzxn';
         CREATE USER datahub WITH PASSWORD '4HX6wk2hD3rpNdTRW';
+        CREATE USER openmetadata WITH PASSWORD 'LMZnESp7xFQ8vxgz';
 
         -- Create database
         CREATE DATABASE airflow OWNER airflow;
@@ -18,6 +19,7 @@ primary:
         CREATE DATABASE nessie OWNER nessie;
         CREATE DATABASE mlflow OWNER mlflow;
         CREATE DATABASE datahub OWNER datahub;
+        CREATE DATABASE openmetadata OWNER openmetadata;
 
         -- Config priviledge
         GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow;
@@ -25,6 +27,7 @@ primary:
         GRANT ALL PRIVILEGES ON DATABASE nessie TO nessie;
         GRANT ALL PRIVILEGES ON DATABASE mlflow TO mlflow;
         GRANT ALL PRIVILEGES ON DATABASE datahub TO datahub;
+        GRANT ALL PRIVILEGES ON DATABASE openmetadata TO openmetadata;
   resources:
     requests:
       memory: 256Mi
