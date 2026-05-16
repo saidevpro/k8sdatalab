@@ -18,6 +18,7 @@ openmetadata:
           secretKey: mysql-password
       dbParams: "allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
     pipelineServiceClientConfig:
+      metadataApiEndpoint: http://openmetadata.observability.svc.cluster.local:8585/api
       airflow:
         apiEndpoint: http://airflow-api-server.data-platform.svc.cluster.local:8080
         auth:
@@ -27,7 +28,6 @@ openmetadata:
             secretKey: airflow-password
     authentication:
       enableSelfSignup: false
-
     authorizer:
       initialAdmins:
         - admin
