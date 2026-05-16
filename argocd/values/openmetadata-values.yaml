@@ -8,17 +8,17 @@ openmetadata:
       scheme: http
 
     database:
-      host: postgresql-data-platform.data-platform.svc.cluster.local
-      port: 5432
-      driverClass: org.postgresql.Driver
-      dbScheme: postgresql
-      databaseName: openmetadata
+      host: openmetadata-mysql.observability.svc.cluster.local
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      databaseName: openmetadata_db
       auth:
         username: openmetadata
         password:
-          secretRef: openmetadata-postgresql-secret
-          secretKey: postgres-password
-      dbParams: ""
+          secretRef: openmetadata-mysql-secret
+          secretKey: mysql-password
+      dbParams: "allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
 
     pipelineServiceClientConfig:
       airflow:
