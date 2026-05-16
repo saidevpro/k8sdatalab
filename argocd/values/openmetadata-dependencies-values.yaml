@@ -13,6 +13,8 @@ mysql:
       GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata'@'%' WITH GRANT OPTION;
       commit;
 
+opensearch:
+  enabled: false
 elasticsearch:
   enabled: false
 airflow:
