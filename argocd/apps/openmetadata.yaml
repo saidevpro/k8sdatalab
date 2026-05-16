@@ -1,16 +1,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: openmetadata
+  name: openmetadata-dependencies
 spec:
   project: lab-system
   source:
     repoURL: https://github.com/saidevpro/k8sdatalab
     targetRevision: main
-    path: argocd/charts/openmetadata
+    path: argocd/charts/openmetadata-dependencies
     helm:
       valueFiles:
-        - ../../values/openmetadata-values.yaml
+        - ../../values/openmetadata-dependencies-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
