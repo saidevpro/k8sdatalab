@@ -42,9 +42,8 @@ with DAG(
     silver_task = SparkSubmitOperator(
         task_id=h.format_etl_silver_dag_task_id(dag_domain),
         name=h.format_etl_silver_dag_task_name(dag_domain),
-        conn_id="spark_cluster",
-        application="local:///opt/spark/jobs/silver/silver_elevators.py",
-        deploy_mode="cluster",
+        conn_id="spark_local",
+        application="local:///opt/spark/jobs/silver/elevators/silver_elevators.py",
         properties_file="/app/spark/confs/spark-small.conf",
         conf={
             "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
