@@ -18,14 +18,23 @@ openmetadata:
           secretKey: mysql-password
       dbParams: "allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
     pipelineServiceClientConfig:
+      enabled: true
       metadataApiEndpoint: http://openmetadata.observability.svc.cluster.local:8585/api
-      airflow:
-        apiEndpoint: http://airflow-api-server.data-platform.svc.cluster.local:8080
-        auth:
-          username: openmetadata
-          password:
-            secretRef: openmetadata-airflow-secret
-            secretKey: airflow-password
+      type: "k8s"
+      k8s:
+        namespace: "observability"
+        ingestionImage: "docker.getcollate.io/openmetadata/ingestion:1.12.8.4"
+        imagePullPolicy: "IfNotPresent"
+        serviceAccountName: "openmetadata-ingestion"
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        rbac:
+          enabled: true
     authentication:
       enableSelfSignup: false
     authorizer:
