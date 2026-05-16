@@ -1,12 +1,10 @@
 openmetadata:
   config:
-
     elasticsearch:
       host: opensearch-cluster-master.data-platform.svc.cluster.local
       searchType: opensearch
       port: 9200
       scheme: http
-
     database:
       host: openmetadata-mysql.observability.svc.cluster.local
       port: 3306
@@ -19,7 +17,6 @@ openmetadata:
           secretRef: openmetadata-mysql-secret
           secretKey: mysql-password
       dbParams: "allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
-
     pipelineServiceClientConfig:
       airflow:
         apiEndpoint: http://airflow-api-server.data-platform.svc.cluster.local:8080
@@ -28,6 +25,13 @@ openmetadata:
           password:
             secretRef: openmetadata-airflow-secret
             secretKey: airflow-password
+    authentication:
+      enableSelfSignup: false
+
+    authorizer:
+      initialAdmins:
+        - admin
+      principalDomain: "k8sdatalab.com"
 
 ingress:
   enabled: false
