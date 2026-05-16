@@ -19,6 +19,5 @@ USER airflow
 
 RUN pip install --no-cache-dir \
     "apache-airflow-providers-apache-spark" \
-    "apache-airflow-providers-amazon" \
-    "openmetadata-ingestion==1.12.8.4"
+    "apache-airflow-providers-amazon"
     
