@@ -21,5 +21,5 @@ RUN pip install --no-cache-dir \
     "apache-airflow-providers-apache-spark" \
     "apache-airflow-providers-amazon" \
     "acryl-datahub-airflow-plugin>=1.1.0.4" \
-    "openmetadata-ingestion==1.12.8"
+    "openmetadata-ingestion==1.12.8.4"
     
