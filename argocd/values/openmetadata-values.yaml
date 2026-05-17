@@ -22,9 +22,10 @@ openmetadata:
       metadataApiEndpoint: http://openmetadata.observability.svc.cluster.local:8585/api
       type: "k8s"
       k8s:
-        namespace: "observability"
-        ingestionImage: "docker.getcollate.io/openmetadata/ingestion:1.12.8"
+        className: "org.openmetadata.service.clients.pipeline.k8s.K8sPipelineClient"
+        ingestionImage: "docker.getcollate.io/openmetadata/ingestion-base:1.12.8"
         imagePullPolicy: "IfNotPresent"
+        namespace: "observability"
         serviceAccountName: "openmetadata-ingestion"
         resources:
           limits:
