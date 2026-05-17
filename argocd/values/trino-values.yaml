@@ -6,7 +6,8 @@ server:
 additionalConfigProperties:
   - http-server.process-forwarded=true
   - internal-communication.shared-secret=v6PJuMVdoV/gVRKpXCsUeDbYj4dJrzrQC8fVZK/kuA8=
-
+  - http-server.authentication.allow-insecure-over-http=true
+  
 coordinator:
   additionalConfigProperties:
     - http-server.authentication.type=PASSWORD
