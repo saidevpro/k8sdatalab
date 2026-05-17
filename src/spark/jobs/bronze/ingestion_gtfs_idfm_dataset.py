@@ -215,5 +215,17 @@ createOrOverwritePartitions(
     dest_table=f"{nessie_catalog_namespace}.pathways"
 )
 
+########################### CLEANUP TMP S3 ##########################
+paginator = s3.get_paginator("list_objects_v2")
+deleted = 0
+for page in paginator.paginate(Bucket=tmp_bucket, Prefix=f"{s3_prefix}/"):
+    objects = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
+    if not objects:
+        continue
+    s3.delete_objects(Bucket=tmp_bucket, Delete={"Objects": objects, "Quiet": True})
+    deleted += len(objects)
+
+print(f"Deleted {deleted} files from s3a://{tmp_bucket}/{s3_prefix}/")
+
 
 spark.stop()
