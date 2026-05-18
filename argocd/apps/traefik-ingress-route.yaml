@@ -1,13 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: traefik-ingress
+  name: ingress-routes
 spec:
   project: lab-system
   source:
     repoURL: https://github.com/saidevpro/k8sdatalab
     targetRevision: main
-    path: argocd/ingress
+    path: argocd/routes
   destination:
     server: https://kubernetes.default.svc
     namespace: lab-system
