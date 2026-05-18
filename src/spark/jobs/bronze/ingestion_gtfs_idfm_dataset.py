@@ -7,6 +7,7 @@ import secrets
 from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp
+from botocore.exceptions import ClientError
 
 
 def createOrOverwritePartitions(sparkSession, df, dest_table):
@@ -64,7 +65,7 @@ s3 = boto3.client(
     aws_secret_access_key=os.getenv("MINIO_SECRET_KEY"),
 )
 
-uploaded = []
+uploaded_keys = []
 with zipfile.ZipFile(zip_bytes) as zf:
     for info in zf.infolist():
         if info.is_dir():
@@ -81,9 +82,10 @@ with zipfile.ZipFile(zip_bytes) as zf:
             Body=data,
             ContentLength=len(data),
         )
-        uploaded.append(f"s3a://{tmp_bucket}/{key}")
+        
+        uploaded_keys.append(key)
 
-print(f"Uploaded {len(uploaded)} files")
+print(f"Uploaded {len(uploaded_keys)} files", uploaded_keys)
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -216,16 +218,17 @@ createOrOverwritePartitions(
 )
 
 ########################### CLEANUP TMP S3 ##########################
-paginator = s3.get_paginator("list_objects_v2")
-deleted = 0
-for page in paginator.paginate(Bucket=tmp_bucket, Prefix=f"{s3_prefix}/"):
-    objects = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
-    if not objects:
-        continue
-    s3.delete_objects(Bucket=tmp_bucket, Delete={"Objects": objects, "Quiet": True})
-    deleted += len(objects)
 
-print(f"Deleted {deleted} files from s3a://{tmp_bucket}/{s3_prefix}/")
+for key in uploaded_keys:
+    try:
+        print(f"Deleting the s3 object with key: {key}")
+        
+        s3.delete_object(
+            Bucket=tmp_bucket,
+            Key=key,
+        )
+    except ClientError as e:
+        print(f"Warning: deleting s3 object {key} failed")      
 
 
 spark.stop()
