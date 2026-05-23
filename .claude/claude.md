@@ -15,6 +15,8 @@ With bronze, silver and gold manages by nessie catalog and minio
 - The code should be modulable and reusable 
 - Always explain the code suggestion before applying the change
 - Read other codes examples to expire for the new codes
+- Ajoute pas de commentaire dans le code
+- pour les jobs spark en python n'ajoute pas de sous fonction sauf si c'est pour pallier à la repetition
 
 # FILES STRUCTURE
 - **src/airflow/** contains airflow apps files like dags
