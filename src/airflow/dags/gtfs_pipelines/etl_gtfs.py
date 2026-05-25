@@ -23,26 +23,18 @@ COMMON_ENV = {
 }
 
 # Silver tables to process — one Spark job per table
-SILVER_TABLES = [
-    "calendar_dates",
-    "calendars",
-    "trips",
-    "pathways",
-    "stop_times",
-    "routes",
-    "wheelchairs",
-    "stop_entrances",
-    "stations",
-    "stop_points",
-]
-
-
-def get_conf(table):
-    return 'spark-medium' if table != 'stop_times' else 'spark-large'
-
-
-def get_conn_id(table):
-    return 'spark_local' if table != 'stop_times' else 'spark_cluster'
+SILVER_TABLES = {
+    "calendar_dates": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "calendars": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "trips": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "pathways": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "stop_times": {"conf": "spark-large", "conn_id": "spark_cluster"},
+    "routes": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "wheelchairs": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "stop_entrances": {"conf": "spark-medium", "conn_id": "spark_cluster"},
+    "stations": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "stop_points": {"conf": "spark-medium", "conn_id": "spark_local"},
+}
 
 
 with DAG(
@@ -72,14 +64,14 @@ with DAG(
     )
 
     with TaskGroup(group_id="silver_tasks") as silver_task_group:
-        for table in SILVER_TABLES:
+        for table, settings in SILVER_TABLES.items():
             table_domain = f"{dag_domain}_{table}"
             SparkSubmitOperator(
                 task_id=h.format_etl_silver_dag_task_id(table_domain),
                 name=h.format_etl_bronze_dag_task_name(table_domain),
-                conn_id=get_conn_id(table),
+                conn_id=settings["conn_id"],
                 application=f"local:///opt/spark/jobs/silver/gtfs/transform_{table}.py",
-                properties_file=f"/app/spark/confs/{get_conf(table)}.conf",
+                properties_file=f"/app/spark/confs/{settings['conf']}.conf",
                 env_vars=COMMON_ENV,
                 conf={
                     **COMMON_CONF,
