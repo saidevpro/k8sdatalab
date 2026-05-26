@@ -1,0 +1,48 @@
+---
+- name: Persist Longhorn multipath blacklist
+  hosts: workers
+  become: true
+  gather_facts: false
+
+  handlers:
+    - name: restart multipathd
+      systemd:
+        name: multipathd
+        state: restarted
+        enabled: true
+
+  tasks:
+
+    - name: Write /etc/multipath.conf with Longhorn blacklist
+      copy:
+        dest: /etc/multipath.conf
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+        content: |
+          blacklist {
+              devnode "^sd[a-z0-9]+"
+              devnode "^longhorn.*"
+          }
+      notify: restart multipathd
+
+    - name: Flush handlers now to restart multipathd before verification
+      meta: flush_handlers
+
+    - name: List remaining multipath devices
+      command: multipath -ll
+      register: multipath_ll
+      changed_when: false
+      failed_when: false
+
+    - name: Show multipath -ll output
+      debug:
+        var: multipath_ll.stdout_lines
+
+    - name: Assert no multipath device remains
+      assert:
+        that:
+          - "'mpatha' not in (multipath_ll.stdout | default(''))"
+        success_msg: "Longhorn blacklist active — multipathd no longer claims block devices"
+        fail_msg: "A multipath device is still present — check /etc/multipath.conf"
