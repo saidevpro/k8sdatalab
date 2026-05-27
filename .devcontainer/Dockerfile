@@ -45,10 +45,20 @@ RUN curl -L -o /usr/local/bin/trino \
 
 RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+# Install K9S
 RUN wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb \
     && apt-get update \
     && apt-get install -y ./k9s_linux_amd64.deb \
     && rm k9s_linux_amd64.deb
+
+# Install Vault CLI
+RUN wget -O- https://apt.releases.hashicorp.com/gpg \
+    | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com noble main" \
+    > /etc/apt/sources.list.d/hashicorp.list \
+    && apt-get update \
+    && apt-get install -y vault \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Ansible
 COPY requirements.txt /tmp/requirements.txt
