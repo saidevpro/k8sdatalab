@@ -25,6 +25,7 @@ with DAG(
             "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
             "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
             "spark.sql.catalog.nessie.ref": "dev",
-            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/"
+            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+            "spark.sql.catalog.nessie.gc.enabled": "true"
         },
     )
