@@ -29,15 +29,8 @@ spec:
     targetRevision: main
     path: argocd/charts/minkms
     helm:
-      values: |
-        minkms:
-          name: minkms
-          image:
-            repository: quay.io/minio/aistor/minkms
-            tag:  RELEASE.2025-11-12T19-14-51Z
-            pullPolicy: IfNotPresent
-          hsm:
-            key: "hsm:aes256:VF40XEo1v8uXrtvyIEJjh4wygGkSC4UdSFnvqJH0wG4="
+      valueFiles:
+        - ../../values/minkms-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: data-platform

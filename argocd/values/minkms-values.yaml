@@ -1,4 +1,9 @@
 minkms:
+  name: minkms
+  image:
+    repository: quay.io/minio/aistor/minkms
+    tag:  RELEASE.2025-11-12T19-14-51Z
+    pullPolicy: IfNotPresent
   configuration:
     existingSecret: false
     hsm:
@@ -10,5 +15,5 @@ minkms:
             path: transit/
           approle:
             path: approle
-            id: "<VAULT_APPROLE_ROLE_ID>"
-            secret: "<VAULT_APPROLE_SECRET_ID>"
+            id: "868beab0-c0a0-b9c2-caed-40d91e9f52d6"
+            secret: "0281cc60-e1d0-bf34-006c-f3f6d246774f"
