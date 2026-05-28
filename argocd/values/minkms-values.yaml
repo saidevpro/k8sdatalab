@@ -15,5 +15,5 @@ minkms:
             path: transit/
           approle:
             path: approle
-            id: "868beab0-c0a0-b9c2-caed-40d91e9f52d6"
-            secret: "0281cc60-e1d0-bf34-006c-f3f6d246774f"
+            id: "192a7a9b-6476-6fd9-0c88-195207a44824"
+            secret: "8ed8e96a-e8d7-d330-f797-a61d1a9cce38"
