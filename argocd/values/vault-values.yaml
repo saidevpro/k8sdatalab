@@ -8,6 +8,14 @@ injector:
 server:
   enabled: true
 
+  extraSecretEnvironmentVars: 
+    - envName: AWS_SECRET_ACCESS_KEY
+      secretName: vault-seal-aws-credentials
+      secretKey: AWS_SECRET_KEY
+    - envName: AWS_ACCESS_KEY_ID
+      secretName: vault-seal-aws-credentials
+      secretKey: AWS_ACCESS_KEY
+
   standalone:
     enabled: true
     config: |
@@ -21,6 +29,11 @@ server:
 
       storage "file" {
         path = "/vault/data"
+      }
+
+      seal "awskms" {
+        region     = "eu-west-3"
+        kms_key_id = "4d2558c3-d8ed-4a88-9794-7b5ba3a79d8f"
       }
 
   dataStorage:
