@@ -17,15 +17,15 @@ with DAG(
     bronze_task = SparkSubmitOperator(
         task_id=h.format_etl_bronze_dag_task_id(domain_journalier),
         name=h.format_etl_bronze_dag_task_name(domain_journalier),
-        conn_id="spark_local",
-        application="local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-        properties_file="/app/spark/confs/spark-small.conf",
+        conn_id="spark_cluster",
+        application="local:///opt/spark/jobs/bronze/ingestion_validations_voies_ferres.py",
+        properties_file="/app/spark/confs/spark-medium.conf",
         env_vars={
-            "NESSIE_NAMESPACE": "bronze",
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "PRIM_DATASET_TOKEN": "{{ var.value.PRIM_DATASET_TOKEN }}",
-            "DESTINATION_TABLE": "nessie.bronze.validations_journalier",
-            "DATASET": "validations-reseau-ferre-nombre-validations-par-jour-3eme-trimestre"
+            "MINIO_URL": "{{ var.value.MINIO_URL }}",
+    "MINIO_ACCESS_KEY": "{{ var.value.MINIO_ACCESS_KEY }}",
+    "MINIO_SECRET_KEY": "{{ var.value.MINIO_SECRET_KEY }}",
         },
         conf={
             "spark.kubernetes.container.image": "saidsow/spark:3.5.8",

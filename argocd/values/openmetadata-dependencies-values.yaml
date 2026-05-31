@@ -6,7 +6,7 @@ mysql:
   primary:
     persistence:
       storageClass: longhorn
-      size: 2Gi
+      size: 4Gi
   initdbScripts:
     init_openmetadata_db_scripts.sql: |
       CREATE DATABASE openmetadata_db;
