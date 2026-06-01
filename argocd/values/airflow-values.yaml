@@ -131,14 +131,19 @@ extraPipPackages:
   - apache-airflow-providers-openlineage
   -  "dlt==1.24.0"
 
-extraEnvFrom: |
-  - secretRef:
-      name: 'dag-bronze-vars'
-
-extraEnv: |-
+extraEnv:
   - name: AIRFLOW__OPENLINEAGE__NAMESPACE
     value: k8sdatalab
   - name: AIRFLOW__OPENLINEAGE__TRANSPORT
     value: >-
       {"type":"http","url":"http://marquez.observability.svc.cluster.local","endpoint":"api/v1/lineage"}
-
+  - name: MINIO_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: minio-warehouse-secret
+        key: access-key
+  - name: MINIO_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: minio-warehouse-secret
+        key: secret-key
