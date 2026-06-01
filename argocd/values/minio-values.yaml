@@ -22,7 +22,7 @@ persistence:
 environment:
   MINIO_KMS_SERVER: "https://minkms-minkms.data-platform.svc.cluster.local:7373"
   MINIO_KMS_ENCLAVE: "minio"
-  MINIO_KMS_SSE_KEY: "minio-key"
+  MINIO_KMS_SSE_KEY: "minio-vault-key"
   MINIO_KMS_API_KEY: "k1:OvOij2_SOzHkjZzcmRcuch8DBTg78pMJYsGJV64MYZs"
 
 resources:
