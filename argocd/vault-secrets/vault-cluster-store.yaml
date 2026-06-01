@@ -1,0 +1,18 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: vault-cluster-store
+spec:
+  provider:
+    vault:
+      server: "http://vault.vault.svc.cluster.local:8200"
+      path: "secret"
+      version: "v2"
+      auth:
+        appRole:
+          path: approle
+          roleId: "d355e772-3f42-d2e4-2ec8-531fa3a82edf"
+          secretRef:
+            name: vault-approle
+            namespace: lab-system
+            key: secret-id
