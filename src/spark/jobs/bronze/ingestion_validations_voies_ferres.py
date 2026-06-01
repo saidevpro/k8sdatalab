@@ -28,10 +28,10 @@ def createOrOverwritePartitions(sparkSession, df, dest_table):
 
 PRIM_DATASET_URL = os.getenv("PRIM_DATASET_URI")
 ENDPOINT = "/offre-horaires-tc-gtfs-idfm/exports/json"
-PRIM_TOKEN = os.getenv("PRIM_TOKEN")
+DATASET_API_KEY = os.getenv("PRIM_DATASET_TOKEN")
 
 headers = {
-    "Authorization": f"apikey {PRIM_TOKEN}",
+    "Authorization": f"apikey {DATASET_API_KEY}",
 }
 
 r = requests.get(f"{PRIM_DATASET_URL}{ENDPOINT}", headers=headers, timeout=30)
