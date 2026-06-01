@@ -6,24 +6,24 @@ image:
 
 versionStoreType: JDBC2
 
-catalog:
-  enabled: true
-  iceberg:
-    defaultWarehouse: warehouse
-    warehouses:
-      - name: warehouse
-        location: s3://datalake/warehouse
-  storage:
-    s3:
-      defaultOptions:
-        endpoint: http://minio.data-platform.svc.cluster.local:9000
-        region: us-east-1
-        pathStyleAccess: true
-        authType: STATIC
-        accessKeySecret:
-          name: warehouse-s3-credentials
-          awsAccessKeyId: AWS_ACCESS_KEY_ID
-          awsSecretAccessKey: AWS_SECRET_ACCESS_KEY
+# catalog:
+#   enabled: true
+#   iceberg:
+#     defaultWarehouse: warehouse
+#     warehouses:
+#       - name: warehouse
+#         location: s3://datalake/warehouse
+#   storage:
+#     s3:
+#       defaultOptions:
+#         endpoint: http://minio.data-platform.svc.cluster.local:9000
+#         region: us-east-1
+#         pathStyleAccess: true
+#         authType: STATIC
+#         accessKeySecret:
+#           name: warehouse-s3-credentials
+#           awsAccessKeyId: AWS_ACCESS_KEY_ID
+#           awsSecretAccessKey: AWS_SECRET_ACCESS_KEY
 
 jdbc:
   jdbcUrl: jdbc:postgresql://postgresql-data-platform.data-platform.svc.cluster.local:5432/nessie
