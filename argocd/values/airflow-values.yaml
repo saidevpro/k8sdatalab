@@ -138,12 +138,12 @@ extraEnv: |-
   - name: AIRFLOW__OPENLINEAGE__TRANSPORT
     value: >-
       {"type":"http","url":"http://marquez.observability.svc.cluster.local","endpoint":"api/v1/lineage"}
-  - name: MINIO_ACCESS_KEY
+  - name: AIRFLOW_VAR_MINIO_ACCESS_KEY
     valueFrom:
       secretKeyRef:
         name: minio-warehouse-secret
         key: access-key
-  - name: MINIO_SECRET_KEY
+  - name: AIRFLOW_VAR_MINIO_SECRET_KEY
     valueFrom:
       secretKeyRef:
         name: minio-warehouse-secret
