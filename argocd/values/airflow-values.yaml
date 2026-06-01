@@ -105,7 +105,7 @@ createUserJob:
     password: "Gfz#Klu8n9VC4c7T92D"
 
 migrateDatabaseJob:
-  enabled: true
+  enabled: false
   useHelmHooks: false
   resources:
     requests:
