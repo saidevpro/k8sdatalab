@@ -24,8 +24,8 @@ with DAG(
             "PRIM_DATASET_URI": "{{ var.value.PRIM_DATASET_URI }}",
             "PRIM_DATASET_TOKEN": "{{ var.value.PRIM_DATASET_TOKEN }}",
             "MINIO_URL": "{{ var.value.MINIO_URL }}",
-    "MINIO_ACCESS_KEY": "{{ var.value.MINIO_ACCESS_KEY }}",
-    "MINIO_SECRET_KEY": "{{ var.value.MINIO_SECRET_KEY }}",
+            "MINIO_ACCESS_KEY": "{{ var.value.MINIO_ACCESS_KEY }}",
+            "MINIO_SECRET_KEY": "{{ var.value.MINIO_SECRET_KEY }}",
         },
         conf={
             "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
