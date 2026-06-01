@@ -3,6 +3,7 @@ executor: KubernetesExecutor # ← chaque task = 1 pod k8s
 fernetKeySecretName: airflow-secret-keys
 webserverSecretKeySecretName: airflow-secret-keys
 jwtSecretName: airflow-secret-keys
+apiSecretKeySecretName: airflow-secret-keys
 
 config:
   logging:
