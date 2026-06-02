@@ -1,5 +1,7 @@
-rootUser: "minio"
-rootPassword: "+~J3|cr{rQ61"
+# rootUser: ""
+# rootPassword: ""
+
+existingSecret: "minio-root-login"
 
 ## minio mode, i.e. standalone or distributed
 mode: distributed ## other supported values are "standalone"
