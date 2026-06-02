@@ -26,6 +26,6 @@ spark:
 s3:
   endpoint: "http://minio.data-platform.svc.cluster.local:9000"
   bucket: "spark-logs"
-  existingSecret: "spark-logs-s3-credentials"
-  existingSecretAccessKeyKey: "accesskey"
-  existingSecretSecretKeyKey: "secretkey"
+  existingSecret: minio-spark-logs-creds
+  existingSecretAccessKeyKey: access-key
+  existingSecretSecretKeyKey: secret-key
