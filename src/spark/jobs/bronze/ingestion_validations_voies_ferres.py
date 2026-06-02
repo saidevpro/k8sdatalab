@@ -6,7 +6,7 @@ import io
 import secrets
 from datetime import datetime
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import current_timestamp
+from pyspark.sql.functions import current_date
 from botocore.exceptions import ClientError
 
 def createOrOverwritePartitions(sparkSession, df, dest_table):
@@ -117,6 +117,8 @@ df_nb = (
 
 df_nb.show(5)
 
+df_nb = df_nb.withColumn("ingestion_date", current_date())
+
 createOrOverwritePartitions(
     sparkSession=spark,
     df=df_nb,
@@ -131,6 +133,8 @@ df_profil = (
 )
 
 df_profil.show(5)
+
+df_profil = df_profil.withColumn("ingestion_date", current_date())
 
 createOrOverwritePartitions(
     sparkSession=spark,
