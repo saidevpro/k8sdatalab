@@ -34,7 +34,7 @@ def dbg(name, *args):
 spark = SparkSession.builder.getOrCreate()
 
 PRIM_DATASET_URL = os.getenv("PRIM_DATASET_URI")
-ENDPOINT = "/offre-horaires-tc-gtfs-idfm/exports/json"
+ENDPOINT = "/histo-validations-reseau-ferre/exports/json"
 DATASET_API_KEY = os.getenv("PRIM_DATASET_TOKEN")
 
 headers = {
