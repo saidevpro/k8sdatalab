@@ -24,16 +24,46 @@ COMMON_ENV = {
 
 # Silver tables to process — one Spark job per table
 SILVER_TABLES = {
-    "calendar_dates": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "calendars": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "trips": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "pathways": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "stop_times": {"conf": "spark-large", "conn_id": "spark_cluster"},
-    "routes": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "wheelchairs": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "stop_entrances": {"conf": "spark-medium", "conn_id": "spark_cluster"},
-    "stations": {"conf": "spark-medium", "conn_id": "spark_local"},
-    "stop_points": {"conf": "spark-medium", "conn_id": "spark_local"},
+    "calendar_dates": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "calendars": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "trips": {
+        "conf": "spark-medium",
+        "conn_id": "spark_cluster"
+    },
+    "pathways": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "stop_times": {
+        "conf": "spark-large",
+        "conn_id": "spark_cluster"
+    },
+    "routes": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "wheelchairs": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "stop_entrances": {
+        "conf": "spark-medium",
+        "conn_id": "spark_cluster"
+    },
+    "stations": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "stop_points": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
 }
 
 
