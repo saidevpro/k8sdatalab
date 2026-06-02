@@ -26,6 +26,8 @@ def createOrOverwritePartitions(sparkSession, df, dest_table):
             .overwritePartitions()
         )
 
+spark = SparkSession.builder.getOrCreate()
+
 PRIM_DATASET_URL = os.getenv("PRIM_DATASET_URI")
 ENDPOINT = "/offre-horaires-tc-gtfs-idfm/exports/json"
 DATASET_API_KEY = os.getenv("PRIM_DATASET_TOKEN")
@@ -94,7 +96,6 @@ for item in data:
         list_files.extend(files_path)
 
 
-spark = SparkSession.builder.getOrCreate()
 
 SPARK_CSV_VALIDATIONS_NB = f"s3a://{tmp_bucket}/{s3_prefix}/*/*NB_FER*.txt"
 SPARK_CSV_VALIDATIONS_PROFIL = f"s3a://{tmp_bucket}/{s3_prefix}/*/*PROFIL_FER*.txt"
