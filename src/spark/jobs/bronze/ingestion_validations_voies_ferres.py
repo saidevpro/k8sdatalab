@@ -25,6 +25,11 @@ def createOrOverwritePartitions(sparkSession, df, dest_table):
             .option("merge-schema", "true")
             .overwritePartitions()
         )
+        
+def dbg(name, *args):
+    print("*"*10, f"Start debug {name}", "*"*10, flush=True)
+    print(*args, flush=True)
+    print("*"*10, "Debug end", "*"*10, flush=True)
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -43,6 +48,9 @@ data = r.json()
 
 if not len(data):
     raise ValueError("Historique validation reseau ferre")
+
+
+dbg("PRIM VALIDATIONS RESPONSE", data)
 
 tmp_bucket = "tmp-spark"
 run_id = f"{datetime.utcnow():%Y-%m-%dT%H%M%S}-{secrets.token_hex(8)}"
@@ -77,7 +85,7 @@ def load_zip_to_s3(zip_url):
                 Body=data,
                 ContentLength=len(data),
             )
-            uploaded.append(f"s3a://{tmp_bucket}/{key}")
+            uploaded.append(key)
 
     return uploaded
 
@@ -89,16 +97,15 @@ for item in data:
         
     year = item.get("annee")
     zip_url = file.get("url")
-    print("*"*20, year, "*"*20)
+    dbg("Loading validation zip", zip_url)
     
     if zip_url:
         files_path = load_zip_to_s3(zip_url)
         list_files.extend(files_path)
 
 
-
-SPARK_CSV_VALIDATIONS_NB = f"s3a://{tmp_bucket}/{s3_prefix}/*/*NB_FER*.txt"
-SPARK_CSV_VALIDATIONS_PROFIL = f"s3a://{tmp_bucket}/{s3_prefix}/*/*PROFIL_FER*.txt"
+SPARK_CSV_VALIDATIONS_NB = f"s3a://{tmp_bucket}/{s3_prefix}/*NB_FER*.txt"
+SPARK_CSV_VALIDATIONS_PROFIL = f"s3a://{tmp_bucket}/{s3_prefix}/*PROFIL_FER*.txt"
 
 df_nb = (
     spark.read
@@ -134,7 +141,7 @@ createOrOverwritePartitions(
 
 for key in list_files:
     try:
-        print(f"Deleting the s3 object with key: {key}")
+        dbg("Deleting tmp s3 object", tmp_bucket, key)
         
         s3.delete_object(
             Bucket=tmp_bucket,
