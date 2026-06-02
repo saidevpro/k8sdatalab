@@ -104,8 +104,8 @@ for item in data:
         list_files.extend(files_path)
 
 
-SPARK_CSV_VALIDATIONS_NB = f"s3a://{tmp_bucket}/{s3_prefix}/*NB_FER*.txt"
-SPARK_CSV_VALIDATIONS_PROFIL = f"s3a://{tmp_bucket}/{s3_prefix}/*PROFIL_FER*.txt"
+SPARK_CSV_VALIDATIONS_NB = f"s3a://{tmp_bucket}/{s3_prefix}/*/*NB_FER*.txt"
+SPARK_CSV_VALIDATIONS_PROFIL = f"s3a://{tmp_bucket}/{s3_prefix}/*/*PROFIL_FER*.txt"
 
 df_nb = (
     spark.read
