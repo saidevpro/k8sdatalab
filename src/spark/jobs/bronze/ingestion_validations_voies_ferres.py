@@ -109,6 +109,30 @@ def load_zip_to_s3(zip_url):
     return uploaded
 
 
+def detect_delimiter_from_s3_key(bucket, key):
+    obj = s3.get_object(
+        Bucket=bucket,
+        Key=key,
+        Range="bytes=0-4096"
+    )
+
+    sample = obj["Body"].read().decode("utf-8", errors="ignore")
+    lines = sample.splitlines()
+
+    if not lines:
+        return "\t"
+
+    first_line = lines[0]
+
+    semicolon_count = first_line.count(";")
+    tab_count = first_line.count("\t")
+
+    if semicolon_count > tab_count:
+        return ";"
+
+    return "\t"
+
+
 list_files = []
 
 for item in data:
@@ -129,26 +153,29 @@ for item in data:
 
 ingestion_date = current_timestamp()
 
-nb_files = [
-    f"s3a://{tmp_bucket}/{key}"
+nb_keys = [
+    key
     for key in list_files
     if "NB_FER" in key and key.endswith(".txt")
 ]
 
-profil_files = [
-    f"s3a://{tmp_bucket}/{key}"
+profil_keys = [
+    key
     for key in list_files
     if "PROFIL_FER" in key and key.endswith(".txt")
 ]
 
 
-for path in nb_files:
-    dbg("Reading NB file", path)
+for key in nb_keys:
+    path = f"s3a://{tmp_bucket}/{key}"
+    delimiter = detect_delimiter_from_s3_key(tmp_bucket, key)
+
+    dbg("Reading NB file", path, "delimiter", delimiter)
 
     df_nb = (
         spark.read
         .option("header", "true")
-        .option("sep", "\t")
+        .option("sep", delimiter)
         .csv(path)
     )
 
@@ -163,13 +190,16 @@ for path in nb_files:
     )
 
 
-for path in profil_files:
-    dbg("Reading PROFIL file", path)
+for key in profil_keys:
+    path = f"s3a://{tmp_bucket}/{key}"
+    delimiter = detect_delimiter_from_s3_key(tmp_bucket, key)
+
+    dbg("Reading PROFIL file", path, "delimiter", delimiter)
 
     df_profil = (
         spark.read
         .option("header", "true")
-        .option("sep", "\t")
+        .option("sep", delimiter)
         .csv(path)
     )
 
