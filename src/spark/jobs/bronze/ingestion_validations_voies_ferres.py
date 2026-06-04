@@ -38,6 +38,34 @@ def dbg(name, *args):
     print("*" * 10, "Debug end", "*" * 10, flush=True)
 
 
+def detect_delimiter_from_s3_key(s3_client, bucket, key):
+    obj = s3_client.get_object(
+        Bucket=bucket,
+        Key=key,
+        Range="bytes=0-4096"
+    )
+
+    sample = obj["Body"].read().decode("utf-8", errors="ignore")
+    lines = sample.splitlines()
+
+    if not lines:
+        return "\t"
+
+    first_line = lines[0]
+
+    if first_line.count(";") > first_line.count("\t"):
+        return ";"
+
+    return "\t"
+
+
+def normalize_nb_columns(df):
+    if "lda" in df.columns and "ID_REFA_LDA" not in df.columns:
+        df = df.withColumnRenamed("lda", "ID_REFA_LDA")
+
+    return df
+
+
 spark = SparkSession.builder.getOrCreate()
 
 PRIM_DATASET_URL = os.getenv("PRIM_DATASET_URI")
@@ -109,30 +137,6 @@ def load_zip_to_s3(zip_url):
     return uploaded
 
 
-def detect_delimiter_from_s3_key(bucket, key):
-    obj = s3.get_object(
-        Bucket=bucket,
-        Key=key,
-        Range="bytes=0-4096"
-    )
-
-    sample = obj["Body"].read().decode("utf-8", errors="ignore")
-    lines = sample.splitlines()
-
-    if not lines:
-        return "\t"
-
-    first_line = lines[0]
-
-    semicolon_count = first_line.count(";")
-    tab_count = first_line.count("\t")
-
-    if semicolon_count > tab_count:
-        return ";"
-
-    return "\t"
-
-
 list_files = []
 
 for item in data:
@@ -168,7 +172,7 @@ profil_keys = [
 
 for key in nb_keys:
     path = f"s3a://{tmp_bucket}/{key}"
-    delimiter = detect_delimiter_from_s3_key(tmp_bucket, key)
+    delimiter = detect_delimiter_from_s3_key(s3, tmp_bucket, key)
 
     dbg("Reading NB file", path, "delimiter", delimiter)
 
@@ -179,6 +183,7 @@ for key in nb_keys:
         .csv(path)
     )
 
+    df_nb = normalize_nb_columns(df_nb)
     df_nb = df_nb.withColumn("ingestion_date", ingestion_date)
 
     df_nb.show(5)
@@ -192,7 +197,7 @@ for key in nb_keys:
 
 for key in profil_keys:
     path = f"s3a://{tmp_bucket}/{key}"
-    delimiter = detect_delimiter_from_s3_key(tmp_bucket, key)
+    delimiter = detect_delimiter_from_s3_key(s3, tmp_bucket, key)
 
     dbg("Reading PROFIL file", path, "delimiter", delimiter)
 
