@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import zipfile
 import boto3
@@ -6,8 +7,31 @@ import io
 import secrets
 from datetime import datetime
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import current_timestamp
+from pyspark.sql.functions import current_timestamp, col
 from botocore.exceptions import ClientError
+
+
+NB_COLUMNS = [
+    "JOUR",
+    "CODE_STIF_TRNS",
+    "CODE_STIF_RES",
+    "CODE_STIF_ARRET",
+    "LIBELLE_ARRET",
+    "ID_REFA_LDA",
+    "CATEGORIE_TITRE",
+    "NB_VALD",
+]
+
+PROFIL_COLUMNS = [
+    "CODE_STIF_TRNS",
+    "CODE_STIF_RES",
+    "CODE_STIF_ARRET",
+    "LIBELLE_ARRET",
+    "ID_REFA_LDA",
+    "CAT_JOUR",
+    "TRNC_HORR_60",
+    "pourc_validations",
+]
 
 
 def createTableIfNotExists(sparkSession, df, dest_table):
@@ -45,25 +69,89 @@ def detect_delimiter_from_s3_key(s3_client, bucket, key):
         Range="bytes=0-4096"
     )
 
-    sample = obj["Body"].read().decode("utf-8", errors="ignore")
+    raw = obj["Body"].read()
+
+    try:
+        sample = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
     lines = sample.splitlines()
 
     if not lines:
-        return "\t"
+        return None
 
     first_line = lines[0]
 
-    if first_line.count(";") > first_line.count("\t"):
-        return ";"
+    counts = {
+        "\t": first_line.count("\t"),
+        ";": first_line.count(";"),
+        ",": first_line.count(","),
+    }
 
-    return "\t"
+    delimiter = max(counts, key=counts.get)
+
+    if counts[delimiter] == 0:
+        return None
+
+    return delimiter
 
 
-def normalize_nb_columns(df):
-    if "lda" in df.columns and "ID_REFA_LDA" not in df.columns:
-        df = df.withColumnRenamed("lda", "ID_REFA_LDA")
+def clean_column_names(df):
+    cleaned_cols = []
+
+    for c in df.columns:
+        clean_name = c.replace("\ufeff", "")
+        clean_name = clean_name.replace("�", "")
+        clean_name = clean_name.strip()
+        clean_name = re.sub(r"\s+", "_", clean_name)
+
+        cleaned_cols.append(col(f"`{c}`").alias(clean_name))
+
+    return df.select(cleaned_cols)
+
+
+def normalize_common_columns(df):
+    rename_map = {
+        "lda": "ID_REFA_LDA",
+        "ID_ZDC": "ID_REFA_LDA",
+        "Pourcentage_validations": "pourc_validations",
+    }
+
+    for old_name, new_name in rename_map.items():
+        if old_name in df.columns and new_name not in df.columns:
+            df = df.withColumnRenamed(old_name, new_name)
 
     return df
+
+
+def is_malformed_single_column(df):
+    return len(df.columns) == 1 and (
+        ";" in df.columns[0]
+        or "," in df.columns[0]
+        or "\t" in df.columns[0]
+    )
+
+
+def normalize_to_schema(df, expected_columns):
+    df = clean_column_names(df)
+    df = normalize_common_columns(df)
+
+    if is_malformed_single_column(df):
+        return None
+
+    missing_columns = [
+        c for c in expected_columns
+        if c not in df.columns
+    ]
+
+    if missing_columns:
+        return None
+
+    return df.select([
+        col(c).cast("string").alias(c)
+        for c in expected_columns
+    ])
 
 
 spark = SparkSession.builder.getOrCreate()
@@ -171,52 +259,81 @@ profil_keys = [
 
 
 for key in nb_keys:
-    path = f"s3a://{tmp_bucket}/{key}"
-    delimiter = detect_delimiter_from_s3_key(s3, tmp_bucket, key)
+    try:
+        path = f"s3a://{tmp_bucket}/{key}"
+        delimiter = detect_delimiter_from_s3_key(s3, tmp_bucket, key)
 
-    dbg("Reading NB file", path, "delimiter", delimiter)
+        if delimiter is None:
+            dbg("Skipping NB file because encoding or delimiter is invalid", key)
+            continue
 
-    df_nb = (
-        spark.read
-        .option("header", "true")
-        .option("sep", delimiter)
-        .csv(path)
-    )
+        dbg("Reading NB file", path, "delimiter", delimiter)
 
-    df_nb = normalize_nb_columns(df_nb)
-    df_nb = df_nb.withColumn("ingestion_date", ingestion_date)
+        df_nb = (
+            spark.read
+            .option("header", "true")
+            .option("sep", delimiter)
+            .csv(path)
+        )
 
-    df_nb.show(5)
+        df_nb = normalize_to_schema(df_nb, NB_COLUMNS)
 
-    appendToBronze(
-        sparkSession=spark,
-        df=df_nb,
-        dest_table="nessie.bronze.validations_nb"
-    )
+        if df_nb is None:
+            dbg("Skipping malformed NB file", path)
+            continue
+
+        df_nb = df_nb.withColumn("ingestion_date", ingestion_date)
+
+        df_nb.show(5, truncate=False)
+
+        appendToBronze(
+            sparkSession=spark,
+            df=df_nb,
+            dest_table="nessie.bronze.validations_nb"
+        )
+
+    except Exception as e:
+        dbg("Skipping NB file because of error", key, str(e))
+        continue
 
 
 for key in profil_keys:
-    path = f"s3a://{tmp_bucket}/{key}"
-    delimiter = detect_delimiter_from_s3_key(s3, tmp_bucket, key)
+    try:
+        path = f"s3a://{tmp_bucket}/{key}"
+        delimiter = detect_delimiter_from_s3_key(s3, tmp_bucket, key)
 
-    dbg("Reading PROFIL file", path, "delimiter", delimiter)
+        if delimiter is None:
+            dbg("Skipping PROFIL file because encoding or delimiter is invalid", key)
+            continue
 
-    df_profil = (
-        spark.read
-        .option("header", "true")
-        .option("sep", delimiter)
-        .csv(path)
-    )
+        dbg("Reading PROFIL file", path, "delimiter", delimiter)
 
-    df_profil = df_profil.withColumn("ingestion_date", ingestion_date)
+        df_profil = (
+            spark.read
+            .option("header", "true")
+            .option("sep", delimiter)
+            .csv(path)
+        )
 
-    df_profil.show(5)
+        df_profil = normalize_to_schema(df_profil, PROFIL_COLUMNS)
 
-    appendToBronze(
-        sparkSession=spark,
-        df=df_profil,
-        dest_table="nessie.bronze.validations_profil"
-    )
+        if df_profil is None:
+            dbg("Skipping malformed PROFIL file", path)
+            continue
+
+        df_profil = df_profil.withColumn("ingestion_date", ingestion_date)
+
+        df_profil.show(5, truncate=False)
+
+        appendToBronze(
+            sparkSession=spark,
+            df=df_profil,
+            dest_table="nessie.bronze.validations_profil"
+        )
+
+    except Exception as e:
+        dbg("Skipping PROFIL file because of error", key, str(e))
+        continue
 
 
 for key in list_files:
