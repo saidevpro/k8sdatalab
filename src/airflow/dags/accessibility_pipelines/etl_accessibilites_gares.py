@@ -60,4 +60,25 @@ with DAG(
         verbose=True,
     )
 
-    bronze_task >> silver_task
+    gold_task = SparkSubmitOperator(
+        task_id=h.format_etl_gold_dag_task_id(dag_domain),
+        name=h.format_etl_gold_dag_task_name(dag_domain),
+        conn_id="spark_cluster",
+        application="local:///opt/spark/jobs/gold/accessibility/gold_station_accessibility.py",
+        deploy_mode="cluster",
+        properties_file="/app/spark/confs/spark-small.conf",
+        conf={
+            "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
+            "spark.kubernetes.namespace": "spark-jobs",
+            "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
+            "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
+            "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
+            "spark.sql.catalog.nessie.ref": "dev",
+            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+            "spark.openlineage.namespace": "gold_publication",
+            "spark.openlineage.appName": h.format_etl_gold_dag_task_name(dag_domain)
+        },
+        verbose=True,
+    )
+
+    bronze_task >> silver_task >> gold_task

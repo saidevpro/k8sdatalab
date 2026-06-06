@@ -66,6 +66,25 @@ SILVER_TABLES = {
     },
 }
 
+# Gold jobs to publish — one Spark job per file
+GOLD_JOBS = {
+    "dim_stops": {
+        "app": "gold/gtfs/dim_stops.py",
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
+    "trip_schedule": {
+        "app": "gold/gtfs/trip_schedule.py",
+        "conf": "spark-large",
+        "conn_id": "spark_cluster"
+    },
+    "service_calendar": {
+        "app": "gold/gtfs/service_calendar.py",
+        "conf": "spark-medium",
+        "conn_id": "spark_cluster"
+    },
+}
+
 
 with DAG(
     dag_id=h.format_etl_dag_id(dag_domain),
@@ -111,4 +130,22 @@ with DAG(
                 verbose=True,
             )
 
-    bronze_task >> silver_task_group
+    with TaskGroup(group_id="gold_tasks") as gold_task_group:
+        for job, settings in GOLD_JOBS.items():
+            job_domain = f"{dag_domain}_{job}"
+            SparkSubmitOperator(
+                task_id=h.format_etl_gold_dag_task_id(job_domain),
+                name=h.format_etl_gold_dag_task_name(job_domain),
+                conn_id=settings["conn_id"],
+                application=f"local:///opt/spark/jobs/{settings['app']}",
+                properties_file=f"/app/spark/confs/{settings['conf']}.conf",
+                env_vars=COMMON_ENV,
+                conf={
+                    **COMMON_CONF,
+                    "spark.openlineage.namespace": "gold_publication",
+                    "spark.openlineage.appName": f"gtfs_gold_{job}",
+                },
+                verbose=True,
+            )
+
+    bronze_task >> silver_task_group >> gold_task_group
