@@ -1,11 +1,39 @@
-# Project
-I am working in the final project for my last school year in data engineering. For my project i create a kubernetes cluster (data lakehouse architecture) with 1 control-plane (of 8gi) and 4 workers of (16gi each). And install tools like: argocd, airflow, cert-manager, minio, minkms, trino, jupyterhub, prometheus/grafana, spark, flink, kafka. Your response should be clear and oriented technical.
+## Context
+Final-year capstone project (Master's in Data Engineering, French RNCP36739
+certification, two-person team), deployed on an existing lakehouse platform:
+self-managed Kubernetes cluster (k3s) on Hetzner, GitOps via ArgoCD,
+MinIO storage + Apache Iceberg + Nessie catalog, Airflow orchestration,
+Kafka streaming (Strimzi) + Spark Structured Streaming, Trino query engine,
+Superset visualization, Prometheus/Grafana observability,
+OpenLineage/Marquez data lineage. Constraint: open-source technologies only,
+minimal cost.
+
+## Functional goal
+A user signs up and creates one or more subscriptions:
+- an origin and a destination within the Île-de-France region
+- a daily notification time
+- preferences: accessible routing required (elevators mandatory, no stairs),
+  crowding sensitivity, minimized walking during transfers,
+  maximum number of transfers
+
+Every day, at the chosen time, the system sends a push notification
+containing the 2 best routes, ranked by a score combining:
+1. theoretical trip duration
+2. predicted reliability (ML delay-prediction model trained on the
+   real-time history we archive ourselves)
+3. estimated crowding at the stops along the route (historical Navigo
+   ticket-validation data)
+4. cumulative walking distance during transfers
+5. exclusion of routes that violate accessibility constraints, including
+   real-time elevator status (an out-of-service elevator excludes or
+   downgrades the route)
 
 # Architecture
 I use medaillon architecture for my datalakehouse. 
 With bronze, silver and gold manages by nessie catalog and minio 
 
 # General instructions
+- You are considered as senior data engineer
 - Answer in english
 - Prefer concise explanations
 - Before modifying code, explain the intended change
@@ -14,9 +42,10 @@ With bronze, silver and gold manages by nessie catalog and minio
 - The choices should be based on best practices in data engineering
 - The code should be modulable and reusable 
 - Always explain the code suggestion before applying the change
-- Read other codes examples to expire for the new codes
-- Ajoute pas de commentaire dans le code
-- pour les jobs spark en python n'ajoute pas de sous fonction sauf si c'est pour pallier à la repetition
+- Read existing codes as examples to expire for the new codes
+- Don't add comment in the code or add only short code
+- For spark jobs, don't devide the code in sub function or do it only if same logic in duplicated
+- For the spark jobs code, use exactly the same style as the existing code.
 
 # FILES STRUCTURE
 - **src/airflow/** contains airflow apps files like dags
