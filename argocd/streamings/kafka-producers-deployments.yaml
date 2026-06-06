@@ -35,3 +35,43 @@ spec:
               value: "kafka-cluster-kafka-bootstrap.streaming.svc.cluster.local:9092"
             - name: KAFKA_TOPIC
               value: "idfm-disruptions-raw"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-idfm-next-stop-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: idfm-next-stop-producer
+  template:
+    metadata:
+      labels:
+        app: idfm-next-stop-producer
+    spec:
+      containers:
+        - name: producer
+          image: saidsow/kafka:0.1.0
+          imagePullPolicy: Always
+          command:
+            - "python"
+            - "-u"
+          args:
+            - "/app/producers/next_stop.py"
+          env:
+            - name: IDFM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: idfm-api-secret
+                  key: IDFM_API_KEY
+            - name: IDFM_API_URL
+              value: "https://prim.iledefrance-mobilites.fr/marketplace/estimated-timetable"
+            - name: POLL_SECONDS
+              value: "600"
+            - name: REQUEST_TIMEOUT
+              value: "180"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-cluster-kafka-bootstrap.streaming.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "idfm-next-stop-raw"
