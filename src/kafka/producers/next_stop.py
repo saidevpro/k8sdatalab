@@ -95,6 +95,8 @@ def get_event_id(item):
     if isinstance(item, dict):
         for key in ["DatedVehicleJourneyRef", "EstimatedVehicleJourneyCode", "VehicleJourneyRef", "id"]:
             value = item.get(key)
+            if isinstance(value, dict):
+                value = value.get("value")
             if value:
                 return str(value)
 
