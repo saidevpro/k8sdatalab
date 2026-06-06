@@ -43,7 +43,7 @@ with DAG(
         task_id=h.format_etl_silver_dag_task_id(dag_domain),
         name=h.format_etl_silver_dag_task_name(dag_domain),
         conn_id="spark_cluster",
-        application="local:///opt/spark/jobs/silver/transform_accessiblites_gares__silver.py",
+        application="local:///opt/spark/jobs/silver/accessibilites/transform_accessiblites_gares__silver.py",
         deploy_mode="cluster",
         properties_file="/app/spark/confs/spark-small.conf",
         conf={
