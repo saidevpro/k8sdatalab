@@ -12,7 +12,7 @@ IDFM_API_KEY = os.environ["IDFM_API_KEY"]
 
 IDFM_API_URL = os.getenv(
     "IDFM_API_URL",
-    "https://prim.iledefrance-mobilites.fr/marketplace/estimated-timetable",
+    "https://prim.iledefrance-mobilites.fr/marketplace/estimated-timetable?LineRef=ALL",
 )
 
 POLL_SECONDS = int(os.getenv("POLL_SECONDS", "600"))
