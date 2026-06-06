@@ -40,6 +40,10 @@ SILVER_TABLES = {
         "conf": "spark-medium",
         "conn_id": "spark_local"
     },
+    "transfers": {
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
     "stop_times": {
         "conf": "spark-large",
         "conn_id": "spark_cluster"
@@ -82,6 +86,11 @@ GOLD_JOBS = {
         "app": "gold/gtfs/service_calendar.py",
         "conf": "spark-medium",
         "conn_id": "spark_cluster"
+    },
+    "transfer_walking": {
+        "app": "gold/gtfs/transfer_walking.py",
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
     },
 }
 
