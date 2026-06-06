@@ -26,6 +26,16 @@ def ensure_namespace(spark: SparkSession) -> None:
     )
 
 
+def wkt_point(lon, lat):
+    return F.when(
+        lon.isNotNull() & lat.isNotNull(),
+        F.concat(
+            F.lit("POINT ("), lon.cast("string"),
+            F.lit(" "), lat.cast("string"), F.lit(")"),
+        ),
+    )
+
+
 def build_dim_stops(spark: SparkSession):
     stop_points = spark.read.table(STOP_POINTS_TABLE)
     stop_areas = spark.read.table(STOP_AREAS_TABLE)
@@ -55,10 +65,12 @@ def build_dim_stops(spark: SparkSession):
             F.col("sp.zone_id").alias("zone_id"),
             F.col("sp.stop_lon").alias("stop_lon"),
             F.col("sp.stop_lat").alias("stop_lat"),
+            wkt_point(F.col("sp.stop_lon"), F.col("sp.stop_lat")).alias("stop_geo_point"),
             F.col("sa.station_id").alias("parent_station_id"),
             F.col("sa.station_name").alias("parent_station_name"),
             F.col("sa.station_lon").alias("parent_station_lon"),
             F.col("sa.station_lat").alias("parent_station_lat"),
+            wkt_point(F.col("sa.station_lon"), F.col("sa.station_lat")).alias("parent_station_geo_point"),
             F.col("ac.accessibility_level_id").alias("accessibility_level_id"),
             F.col("wc.wheelchair_boarding").alias("wheelchair_boarding"),
         )

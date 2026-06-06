@@ -53,6 +53,14 @@ def build_station_accessibility(spark: SparkSession):
             F.col("accessibility_level_id"),
             F.col("stop_point_latitude"),
             F.col("stop_point_longitude"),
+            F.when(
+                F.col("stop_point_longitude").isNotNull()
+                & F.col("stop_point_latitude").isNotNull(),
+                F.concat(
+                    F.lit("POINT ("), F.col("stop_point_longitude").cast("string"),
+                    F.lit(" "), F.col("stop_point_latitude").cast("string"), F.lit(")"),
+                ),
+            ).alias("geo_point"),
             F.col("nb_elevators"),
             F.col("nb_available"),
             F.col("pct_elevators_available"),

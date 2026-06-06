@@ -41,6 +41,17 @@ def build_availability(spark: SparkSession):
             "pct_available",
             F.round(100 * F.col("nb_available") / F.col("nb_elevators"), 1),
         )
+        .withColumn(
+            "geo_point",
+            F.when(
+                F.col("station_longitude").isNotNull()
+                & F.col("station_latitude").isNotNull(),
+                F.concat(
+                    F.lit("POINT ("), F.col("station_longitude").cast("string"),
+                    F.lit(" "), F.col("station_latitude").cast("string"), F.lit(")"),
+                ),
+            ),
+        )
     )
 
 
