@@ -2,6 +2,7 @@ from datetime import datetime
 from airflow import DAG
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.utils.task_group import TaskGroup
+from airflow.utils.trigger_rule import TriggerRule
 import shared_lib.helpers as h
 
 dag_domain = "gtfs"
@@ -100,6 +101,7 @@ with DAG(
     start_date=datetime(2026, 5, 16),
     schedule="0 */4 * * *",
     catchup=False,
+    max_active_tasks=3,
     tags=h.generate_etl_dag_tags(dag_domain),
 ) as dag:
     bronze_task = SparkSubmitOperator(
@@ -154,6 +156,7 @@ with DAG(
                     "spark.openlineage.namespace": "gold_publication",
                     "spark.openlineage.appName": f"gtfs_gold_{job}",
                 },
+                trigger_rule=TriggerRule.ALL_DONE,
                 verbose=True,
             )
 
