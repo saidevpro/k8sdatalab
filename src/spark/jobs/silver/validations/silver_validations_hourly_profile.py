@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS nessie.silver.validations_hourly_profile (
 )
 USING iceberg
 PARTITIONED BY (cat_jour)
-
 """)
 
 spark.sql("""
