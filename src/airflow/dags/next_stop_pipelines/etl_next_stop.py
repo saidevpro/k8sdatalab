@@ -113,3 +113,32 @@ with DAG(
         retry_delay=timedelta(minutes=5),
         verbose=True,
     )
+
+    features_task = SparkSubmitOperator(
+        task_id="publish_next_stop_features__gold",
+        name="publishing-next-stop-features--gold",
+        conn_id="spark_cluster",
+        deploy_mode="cluster",
+        application="local:///opt/spark/jobs/gold/next_stop/next_stop_features.py",
+        properties_file="/app/spark/confs/spark-small.conf",
+        env_vars={
+            "NESSIE_CATALOG": "nessie",
+            "SILVER_NAMESPACE": "silver",
+            "GOLD_NAMESPACE": "gold",
+            "DELAY_THRESHOLD_SEC": "60",
+        },
+        conf={
+            "spark.kubernetes.container.image": "saidsow/spark:3.5.8",
+            "spark.kubernetes.namespace": "spark-jobs",
+            "spark.kubernetes.authenticate.driver.serviceAccountName": "spark",
+            "spark.hadoop.fs.s3a.access.key": "{{ var.value.MINIO_ACCESS_KEY }}",
+            "spark.hadoop.fs.s3a.secret.key": "{{ var.value.MINIO_SECRET_KEY }}",
+            "spark.sql.catalog.nessie.ref": "dev",
+            "spark.sql.catalog.nessie.warehouse": "s3a://datalake/warehouse/",
+            "spark.openlineage.namespace": "gold_publication",
+            "spark.openlineage.appName": "publishing-next-stop-features--gold",
+        },
+        retries=2,
+        retry_delay=timedelta(minutes=5),
+        verbose=True,
+    )

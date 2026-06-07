@@ -96,10 +96,10 @@ def parse_bronze(stream_df):
 
     return parsed.select(
         F.col("raw.DatedVehicleJourneyRef.value").alias("journey_ref"),
-        F.col("raw.LineRef.value").alias("line_ref"),
+        F.regexp_extract(F.col("raw.LineRef.value"), r"([A-Za-z0-9]+):?$", 1).alias("line_ref"),
         F.col("raw.PublishedLineName.value").getItem(0).alias("published_line"),
         F.col("raw.DirectionName.value").getItem(0).alias("direction"),
-        F.col("raw.DestinationRef.value").alias("destination_ref"),
+        F.regexp_extract(F.col("raw.DestinationRef.value"), r"(\d+):?$", 1).alias("destination_ref"),
         F.col("raw.DestinationName.value").getItem(0).alias("destination_name"),
         F.to_timestamp(F.col("raw.RecordedAtTime")).alias("recorded_at"),
         F.col("raw.EstimatedCalls.EstimatedCall").alias("calls"),
@@ -117,7 +117,7 @@ def explode_calls(parsed_df):
         .select(
             "journey_ref", "line_ref", "published_line", "direction",
             "destination_ref", "destination_name", "recorded_at", "batch_time",
-            F.col("call.StopPointRef.value").alias("stop_point_ref"),
+            F.regexp_extract(F.col("call.StopPointRef.value"), r"(\d+):?$", 1).alias("stop_point_ref"),
             F.to_timestamp(F.col("call.AimedArrivalTime")).alias("aimed_arrival"),
             F.to_timestamp(F.col("call.ExpectedArrivalTime")).alias("expected_arrival"),
             F.to_timestamp(F.col("call.AimedDepartureTime")).alias("aimed_departure"),
