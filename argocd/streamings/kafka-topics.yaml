@@ -8,5 +8,6 @@ spec:
   partitions: 3
   replicas: 2
   config:
-    retention.ms: 604800000
+    retention.ms: "1000"
+    segment.ms: "1000"
     cleanup.policy: delete
