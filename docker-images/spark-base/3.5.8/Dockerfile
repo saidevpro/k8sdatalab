@@ -35,7 +35,8 @@ RUN python3 -m pip install --no-cache-dir \
     boto3 \
     pandas \
     pyarrow \
-    pynessie
+    pynessie \
+    mlflow
 
 RUN mkdir -p /home/spark \
     && chown -R spark:root /home/spark /opt/spark/work-dir \
