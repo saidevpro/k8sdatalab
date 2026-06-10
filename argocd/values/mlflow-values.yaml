@@ -26,8 +26,8 @@ artifactRoot:
     path: ""
     existingSecret:
       name: "mlflow-artifacts-s3-keys"
-      keyOfAccessKeyId: "accessKey"
-      keyOfSecretAccessKey: "secretKey"
+      keyOfAccessKeyId: "access_key"
+      keyOfSecretAccessKey: "secret_key"
 
 auth:
   enabled: true
