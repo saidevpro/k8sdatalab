@@ -1,6 +1,8 @@
 import os
 
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
 
 NESSIE_CATALOG = os.getenv("NESSIE_CATALOG", "nessie")
@@ -28,20 +30,18 @@ def backfill_ids(spark: SparkSession, table: str, regex_map: dict) -> None:
 
 
 def dedup_latest(spark: SparkSession, table: str, key_cols: list) -> None:
-    group_cols = ", ".join(key_cols)
-    on_clause = " AND ".join(f"t.{c} = k.{c}" for c in key_cols)
-    spark.sql(
-        f"""
-        MERGE INTO {table} AS t
-        USING (
-          SELECT {group_cols}, MAX(batch_time) AS keep_bt
-          FROM {table} GROUP BY {group_cols}
-        ) AS k
-        ON {on_clause} AND t.batch_time < k.keep_bt
-        WHEN MATCHED THEN DELETE
-        """
+    latest = Window.partitionBy(*key_cols).orderBy(F.col("batch_time").desc())
+    deduped = (
+        spark.read.table(table)
+        .withColumn("__rn", F.row_number().over(latest))
+        .filter(F.col("__rn") == 1)
+        .drop("__rn")
     )
-    print(f"deduplicated {table} on ({group_cols})")
+    deduped.persist()
+    deduped.count()
+    deduped.writeTo(table).overwritePartitions()
+    deduped.unpersist()
+    print(f"deduplicated {table} on ({', '.join(key_cols)})")
 
 
 def rebuild_delays_by_stop(spark: SparkSession) -> None:

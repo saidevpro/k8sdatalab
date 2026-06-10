@@ -17,7 +17,7 @@ with DAG(
         application="local:///opt/spark/jobs/maintenance/backfill_clean_next_stop_ids.py",
         name="backfill-clean-next-stop-ids",
         conn_id="spark_local",
-        properties_file="/app/spark/confs/spark-small.conf",
+        properties_file="/app/spark/confs/spark-medium.conf",
         env_vars={
             "NESSIE_CATALOG": "nessie",
             "SILVER_NAMESPACE": "silver",
