@@ -5,7 +5,7 @@ from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOpe
 
 
 with DAG(
-    dag_id="maintenance_nessie_merge_dev_to_main",
+    dag_id="maintenance_nessie_merge",
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
