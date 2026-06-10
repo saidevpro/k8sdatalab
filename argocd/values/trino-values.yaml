@@ -48,8 +48,8 @@ worker:
 service:
   type: ClusterIP
 
-additionalCatalogs:
-  iceberg: |-
+catalogs:
+  lakehouse: |-
     connector.name=iceberg
     iceberg.catalog.type=nessie
     iceberg.nessie-catalog.uri=http://nessie.data-platform.svc.cluster.local:19120/api/v2
@@ -59,7 +59,33 @@ additionalCatalogs:
     # MinIO comme stockage S3
     fs.native-s3.enabled=true
     s3.endpoint=http://minio.data-platform.svc.cluster.local:9000
-    s3.aws-access-key=UguAWW3vvsLHDLpI4WuY
-    s3.aws-secret-key=kDLmVNubBrwGlcjRyCFnSb7ieIJVsdq2b4zsXoT7
+    s3.aws-access-key=${ENV:MINIO_ACCESS_KEY}
+    s3.aws-secret-key=${ENV:MINIO_SECRET_KEY}
     s3.path-style-access=true
     s3.region=us-east-1
+  dev: |-
+    connector.name=iceberg
+    iceberg.catalog.type=nessie
+    iceberg.nessie-catalog.uri=http://nessie.data-platform.svc.cluster.local:19120/api/v2
+    iceberg.nessie-catalog.ref=dev
+    iceberg.nessie-catalog.default-warehouse-dir=s3://datalake/warehouse
+
+    # MinIO comme stockage S3
+    fs.native-s3.enabled=true
+    s3.endpoint=http://minio.data-platform.svc.cluster.local:9000
+    s3.aws-access-key=${ENV:MINIO_ACCESS_KEY}
+    s3.aws-secret-key=${ENV:MINIO_SECRET_KEY}
+    s3.path-style-access=true
+    s3.region=us-east-1
+
+env:
+  - name: MINIO_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: minio-warehouse-secret
+        key: access-key
+  - name: MINIO_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: minio-warehouse-secret
+        key: secret-key
