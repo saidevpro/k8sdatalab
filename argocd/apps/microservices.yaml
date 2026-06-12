@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: microservices
+spec:
+  project: lab-system
+  source:
+    repoURL: https://github.com/saidevpro/k8sdatalab
+    targetRevision: main
+    path: argocd/microservices
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
