@@ -19,7 +19,7 @@ with DAG(
         conn_id="spark_cluster",
         deploy_mode="cluster",
         application="local:///opt/spark/jobs/ml/next_stop/train_delay_models.py",
-        properties_file="/app/spark/confs/spark-medium.conf",
+        properties_file="/app/spark/confs/spark-large.conf",
         env_vars={
             "NESSIE_CATALOG": "nessie",
             "GOLD_NAMESPACE": "gold",
