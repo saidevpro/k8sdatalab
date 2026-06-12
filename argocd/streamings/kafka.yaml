@@ -12,7 +12,7 @@ spec:
     - controller
   storage:
     type: persistent-claim
-    size: 3Gi
+    size: 1Gi
     deleteClaim: false
     class: longhorn
   resources:
