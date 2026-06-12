@@ -4,6 +4,8 @@ metadata:
   name: idfm-disruptions-raw
   labels:
     strimzi.io/cluster: kafka-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   partitions: 3
   replicas: 2
@@ -19,6 +21,8 @@ metadata:
   name: idfm-next-stop-raw
   labels:
     strimzi.io/cluster: kafka-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   partitions: 3
   replicas: 2
