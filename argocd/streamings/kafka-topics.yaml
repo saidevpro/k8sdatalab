@@ -8,6 +8,22 @@ spec:
   partitions: 3
   replicas: 2
   config:
-    retention.ms: "1000"
-    segment.ms: "1000"
+    retention.ms: "3600000"
+    retention.bytes: "536870912"
+    segment.ms: "1800000"
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: idfm-next-stop-raw
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  partitions: 3
+  replicas: 2
+  config:
+    retention.ms: "3600000"
+    retention.bytes: "536870912"
+    segment.ms: "1800000"
     cleanup.policy: delete

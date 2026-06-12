@@ -76,8 +76,10 @@ spec:
       transaction.state.log.min.isr: 2
       default.replication.factor: 3
       min.insync.replicas: 2
-      log.retention.hours: 24
-      log.retention.bytes: 5368709120
+      log.retention.hours: 1
+      log.retention.bytes: 536870912
+      log.segment.bytes: 268435456
+      compression.type: producer
   entityOperator:
     topicOperator: {}
     userOperator: {}
