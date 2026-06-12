@@ -12,7 +12,5 @@ spec:
     server: https://kubernetes.default.svc
     namespace: streaming
   syncPolicy:
-    automated:
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
