@@ -7,6 +7,11 @@ additionalConfigProperties:
   - http-server.process-forwarded=true
   - internal-communication.shared-secret=v6PJuMVdoV/gVRKpXCsUeDbYj4dJrzrQC8fVZK/kuA8=
   - http-server.authentication.allow-insecure-over-http=true
+  - query.max-memory-per-node=1GB
+  - memory.heap-headroom-per-node=300MB
+
+jvm:
+  maxHeapSize: "1500M"
   
 coordinator:
   additionalConfigProperties:
@@ -32,7 +37,7 @@ coordinator:
       memory: 384Mi
       cpu: 250m
     limits:
-      memory: 1Gi
+      memory: 2Gi
       cpu: 500m
 
 
@@ -42,7 +47,7 @@ worker:
       memory: 384Mi
       cpu: 250m
     limits:
-      memory: 768Mi
+      memory: 2Gi
       cpu: 500m
 
 service:
