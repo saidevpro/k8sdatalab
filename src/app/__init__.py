@@ -1,7 +1,25 @@
+from flasgger import Swagger
 from flask import Flask, jsonify
 
 from .config import Config
 from .extensions import db, jwt
+
+SWAGGER_TEMPLATE = {
+    "swagger": "2.0",
+    "info": {
+        "title": "IDFM Route Notification API",
+        "description": "Subscriptions and daily best-route SMS notifications.",
+        "version": "1.0.0",
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT access token as: Bearer <token>",
+        }
+    },
+}
 
 
 def create_app(config_class=Config):
@@ -10,6 +28,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     jwt.init_app(app)
+    Swagger(app, template=SWAGGER_TEMPLATE)
 
     from . import auth, notifications, subscriptions
 
