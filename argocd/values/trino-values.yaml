@@ -7,11 +7,11 @@ additionalConfigProperties:
   - http-server.process-forwarded=true
   - internal-communication.shared-secret=v6PJuMVdoV/gVRKpXCsUeDbYj4dJrzrQC8fVZK/kuA8=
   - http-server.authentication.allow-insecure-over-http=true
-  - query.max-memory-per-node=1GB
-  - memory.heap-headroom-per-node=300MB
+  - query.max-memory-per-node=2GB
+  - memory.heap-headroom-per-node=512MB
 
 jvm:
-  maxHeapSize: "1500M"
+  maxHeapSize: "3G"
   
 coordinator:
   additionalConfigProperties:
@@ -34,21 +34,21 @@ coordinator:
 
   resources:
     requests:
-      memory: 384Mi
-      cpu: 250m
-    limits:
-      memory: 2Gi
+      memory: 1Gi
       cpu: 500m
+    limits:
+      memory: 4Gi
+      cpu: "1"
 
 
 worker:
   resources:
     requests:
-      memory: 384Mi
-      cpu: 250m
-    limits:
-      memory: 2Gi
+      memory: 1Gi
       cpu: 500m
+    limits:
+      memory: 4Gi
+      cpu: "1"
 
 service:
   type: ClusterIP
