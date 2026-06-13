@@ -1,0 +1,27 @@
+auth:
+  postgresPassword: "ve1l9ZfLfQ4elTjd7uEez"
+
+primary:
+  initdb:
+    scripts:
+      init.sql: |
+        -- Create users
+        CREATE USER admin WITH PASSWORD 'cliZ9l85$mJcH';
+
+        -- Create database
+        CREATE DATABASE itineo OWNER admin;
+
+        -- Config priviledge
+        GRANT ALL PRIVILEGES ON DATABASE itineo TO admin;
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: longhorn
