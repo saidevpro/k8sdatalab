@@ -1,5 +1,5 @@
 server:
-  workers: 2
+  workers: 4
   config: 
     authenticationType: "PASSWORD"
 
