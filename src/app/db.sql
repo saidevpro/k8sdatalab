@@ -1,15 +1,9 @@
 -- IDFM Route Notification App - PostgreSQL schema
--- Run the role/database section as a superuser (e.g. postgres), then the rest
--- connected to the application database:
---   psql -U postgres -f db.sql
+-- The "itineo" database, the "admin" role and its grants already exist.
+-- Run this connected to the application database as admin:
+--   psql -U admin -d itineo -f db.sql
 
--- =====================================================================
--- Role & database (run once, as superuser)
--- =====================================================================
-CREATE ROLE idfm WITH LOGIN PASSWORD 'idfm';
-CREATE DATABASE idfm OWNER idfm;
-
-\connect idfm
+\connect itineo
 
 -- =====================================================================
 -- Tables
@@ -55,9 +49,3 @@ CREATE TABLE notifications (
 -- =====================================================================
 CREATE INDEX ix_subscriptions_user_id ON subscriptions (user_id);
 CREATE INDEX ix_notifications_subscription_id ON notifications (subscription_id);
-
--- =====================================================================
--- Grants
--- =====================================================================
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO idfm;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO idfm;
