@@ -15,10 +15,10 @@ KAFKA_GROUP_ID_PREFIX = os.getenv(
 CHECKPOINT_LOCATION = os.getenv("CHECKPOINT_LOCATION")
 TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "60 seconds")
 
-NESSIE_CATALOG = "nessie"
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 NESSIE_NAMESPACE = os.getenv("NESSIE_NAMESPACE", "bronze")
 DEST_TABLE = os.getenv(
-    "DESTINATION_TABLE", f"{NESSIE_CATALOG}.{NESSIE_NAMESPACE}.next_stop"
+    "DESTINATION_TABLE", f"{catalog_name}.{NESSIE_NAMESPACE}.next_stop"
 )
 
 
@@ -38,12 +38,12 @@ PAYLOAD_SCHEMA = StructType(
 
 
 def ensure_target_table(spark: SparkSession) -> None:
-    nessie_ref = spark.conf.get(f"spark.sql.catalog.{NESSIE_CATALOG}.ref")
+    # nessie_ref = spark.conf.get(f"spark.sql.catalog.{catalog_name}.ref")
     # spark.sql(
-        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {NESSIE_CATALOG} FROM main"
+        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {catalog_name} FROM main"
     # )
     spark.sql(
-        f"CREATE NAMESPACE IF NOT EXISTS {NESSIE_CATALOG}.{NESSIE_NAMESPACE}"
+        f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.{NESSIE_NAMESPACE}"
     )
     spark.sql(
         f"""

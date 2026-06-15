@@ -4,23 +4,23 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 
-NESSIE_CATALOG = os.getenv("NESSIE_CATALOG", "nessie")
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 SILVER_NAMESPACE = os.getenv("SILVER_NAMESPACE", "silver")
 GOLD_NAMESPACE = os.getenv("GOLD_NAMESPACE", "gold")
 
-TRANSFERS_TABLE = f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.transfers"
-PATHWAYS_TABLE = f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.pathways"
+TRANSFERS_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.transfers"
+PATHWAYS_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.pathways"
 
-TRANSFER_WALKING_TABLE = f"{NESSIE_CATALOG}.{GOLD_NAMESPACE}.transfer_walking"
+TRANSFER_WALKING_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.transfer_walking"
 
 
 def ensure_namespace(spark: SparkSession) -> None:
-    nessie_ref = spark.conf.get(f"spark.sql.catalog.{NESSIE_CATALOG}.ref")
+    # nessie_ref = spark.conf.get(f"spark.sql.catalog.{catalog_name}.ref")
     # spark.sql(
-        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {NESSIE_CATALOG} FROM main"
+        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {catalog_name} FROM main"
     # )
     spark.sql(
-        f"CREATE NAMESPACE IF NOT EXISTS {NESSIE_CATALOG}.{GOLD_NAMESPACE}"
+        f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.{GOLD_NAMESPACE}"
     )
 
 

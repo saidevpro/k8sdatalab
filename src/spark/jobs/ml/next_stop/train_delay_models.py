@@ -19,10 +19,10 @@ from pyspark.ml.evaluation import (
 )
 
 
-NESSIE_CATALOG = os.getenv("NESSIE_CATALOG", "nessie")
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 GOLD_NAMESPACE = os.getenv("GOLD_NAMESPACE", "gold")
 FEATURES_TABLE = os.getenv(
-    "FEATURES_TABLE", f"{NESSIE_CATALOG}.{GOLD_NAMESPACE}.next_stop_features"
+    "FEATURES_TABLE", f"{catalog_name}.{GOLD_NAMESPACE}.next_stop_features"
 )
 
 EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT", "next_stop_delay")

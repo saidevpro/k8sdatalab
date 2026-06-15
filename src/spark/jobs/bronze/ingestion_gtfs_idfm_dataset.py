@@ -28,7 +28,8 @@ def createOrOverwritePartitions(sparkSession, df, dest_table):
         )
 
 
-nessie_catalog_namespace = "nessie.bronze"
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+catalog_namespace = f"{catalog_name}.bronze"
 PRIM_DATASET_URI = os.getenv("PRIM_DATASET_URI")
 ENDPOINT = "/offre-horaires-tc-gtfs-idfm/exports/json"
 PRIM_TOKEN = os.getenv("PRIM_TOKEN")
@@ -102,7 +103,7 @@ transfers_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=transfers_df,
-    dest_table=f"{nessie_catalog_namespace}.transfers"
+    dest_table=f"{catalog_namespace}.transfers"
 )
 
 ########################### CALENDARS ##########################
@@ -118,7 +119,7 @@ calendar_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=calendar_df,
-    dest_table=f"{nessie_catalog_namespace}.calendars"
+    dest_table=f"{catalog_namespace}.calendars"
 )
 
 ########################### CALENDAR DATES ##########################
@@ -134,7 +135,7 @@ calendar_dates_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=calendar_dates_df,
-    dest_table=f"{nessie_catalog_namespace}.calendar_dates"
+    dest_table=f"{catalog_namespace}.calendar_dates"
 )
 
 ########################### STOPS ##########################
@@ -150,7 +151,7 @@ stops_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=stops_df,
-    dest_table=f"{nessie_catalog_namespace}.stops"
+    dest_table=f"{catalog_namespace}.stops"
 )
 
 ########################### STOPS TIMES ##########################
@@ -166,7 +167,7 @@ stop_times_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=stop_times_df,
-    dest_table=f"{nessie_catalog_namespace}.stop_times"
+    dest_table=f"{catalog_namespace}.stop_times"
 )
 
 ########################### TRIPS ##########################
@@ -182,7 +183,7 @@ trips_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=trips_df,
-    dest_table=f"{nessie_catalog_namespace}.trips"
+    dest_table=f"{catalog_namespace}.trips"
 )
 
 ########################### ROUTES ##########################
@@ -198,7 +199,7 @@ routes_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=routes_df,
-    dest_table=f"{nessie_catalog_namespace}.routes"
+    dest_table=f"{catalog_namespace}.routes"
 )
 
 ########################### PATHWAYS ##########################
@@ -214,7 +215,7 @@ pathways_df = (
 createOrOverwritePartitions(
     sparkSession=spark,
     df=pathways_df,
-    dest_table=f"{nessie_catalog_namespace}.pathways"
+    dest_table=f"{catalog_namespace}.pathways"
 )
 
 ########################### CLEANUP TMP S3 ##########################

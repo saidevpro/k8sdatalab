@@ -4,25 +4,25 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 
-NESSIE_CATALOG = os.getenv("NESSIE_CATALOG", "nessie")
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 SILVER_NAMESPACE = os.getenv("SILVER_NAMESPACE", "silver")
 GOLD_NAMESPACE = os.getenv("GOLD_NAMESPACE", "gold")
 
-ROUTES_TABLE = f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.routes"
-TRIPS_TABLE = f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.trips"
-STOP_TIMES_TABLE = f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.stop_times"
-STOP_POINTS_TABLE = f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.stop_points"
+ROUTES_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.routes"
+TRIPS_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.trips"
+STOP_TIMES_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.stop_times"
+STOP_POINTS_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.stop_points"
 
-TRIP_SCHEDULE_TABLE = f"{NESSIE_CATALOG}.{GOLD_NAMESPACE}.trip_schedule"
+TRIP_SCHEDULE_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.trip_schedule"
 
 
 def ensure_namespace(spark: SparkSession) -> None:
-    nessie_ref = spark.conf.get(f"spark.sql.catalog.{NESSIE_CATALOG}.ref")
+    # nessie_ref = spark.conf.get(f"spark.sql.catalog.{catalog_name}.ref")
     # spark.sql(
-        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {NESSIE_CATALOG} FROM main"
+        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {catalog_name} FROM main"
     # )
     spark.sql(
-        f"CREATE NAMESPACE IF NOT EXISTS {NESSIE_CATALOG}.{GOLD_NAMESPACE}"
+        f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.{GOLD_NAMESPACE}"
     )
 
 

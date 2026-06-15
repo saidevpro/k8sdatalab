@@ -5,17 +5,17 @@ from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 
-NESSIE_CATALOG = os.getenv("NESSIE_CATALOG", "nessie")
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 SILVER_NAMESPACE = os.getenv("SILVER_NAMESPACE", "silver")
 GOLD_NAMESPACE = os.getenv("GOLD_NAMESPACE", "gold")
 
 SOURCE_TABLE = os.getenv(
-    "SOURCE_TABLE", f"{NESSIE_CATALOG}.{SILVER_NAMESPACE}.next_stop"
+    "SOURCE_TABLE", f"{catalog_name}.{SILVER_NAMESPACE}.next_stop"
 )
 
-SCHEDULE_TABLE = f"{NESSIE_CATALOG}.{GOLD_NAMESPACE}.next_stop_schedule"
-DELAYS_TABLE = f"{NESSIE_CATALOG}.{GOLD_NAMESPACE}.next_stop_delays"
-DELAYS_BY_STOP_TABLE = f"{NESSIE_CATALOG}.{GOLD_NAMESPACE}.delays_by_stop"
+SCHEDULE_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.next_stop_schedule"
+DELAYS_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.next_stop_delays"
+DELAYS_BY_STOP_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.delays_by_stop"
 
 DELAY_THRESHOLD_SEC = int(os.getenv("DELAY_THRESHOLD_SEC", "60"))
 
@@ -25,12 +25,12 @@ MAX_FILES_PER_MICRO_BATCH = os.getenv("MAX_FILES_PER_MICRO_BATCH", "100")
 
 
 def ensure_namespace(spark: SparkSession) -> None:
-    nessie_ref = spark.conf.get(f"spark.sql.catalog.{NESSIE_CATALOG}.ref")
+    # nessie_ref = spark.conf.get(f"spark.sql.catalog.{catalog_name}.ref")
     # spark.sql(
-        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {NESSIE_CATALOG} FROM main"
+        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {catalog_name} FROM main"
     # )
     spark.sql(
-        f"CREATE NAMESPACE IF NOT EXISTS {NESSIE_CATALOG}.{GOLD_NAMESPACE}"
+        f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.{GOLD_NAMESPACE}"
     )
 
 
