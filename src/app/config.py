@@ -21,8 +21,14 @@ class Config:
     SILVER_SCHEMA = os.getenv("SILVER_SCHEMA", "silver")
 
     MAX_CANDIDATES = int(os.getenv("MAX_CANDIDATES", "40"))
-    TOP_ROUTES = int(os.getenv("TOP_ROUTES", "2"))
+    TOP_ROUTES = int(os.getenv("TOP_ROUTES", "3"))
     DEFAULT_TRANSFER_TIME_SEC = int(os.getenv("DEFAULT_TRANSFER_TIME_SEC", "180"))
+    NEAREST_STOPS = int(os.getenv("NEAREST_STOPS", "4"))
+    MAX_ACCESS_WALK_M = float(os.getenv("MAX_ACCESS_WALK_M", "1500"))
+    DEPARTURE_LOOKBACK_SEC = int(os.getenv("DEPARTURE_LOOKBACK_SEC", "1800"))
+    DEPARTURE_WINDOW_SEC = int(os.getenv("DEPARTURE_WINDOW_SEC", "7200"))
+    MAX_TRANSFER_WAIT_SEC = int(os.getenv("MAX_TRANSFER_WAIT_SEC", "1800"))
+    BAN_GEOCODER_URL = os.getenv("BAN_GEOCODER_URL", "https://api-adresse.data.gouv.fr/search/")
 
     WEIGHT_DURATION = float(os.getenv("WEIGHT_DURATION", "0.40"))
     WEIGHT_RELIABILITY = float(os.getenv("WEIGHT_RELIABILITY", "0.25"))
@@ -30,3 +36,6 @@ class Config:
     WEIGHT_WALKING = float(os.getenv("WEIGHT_WALKING", "0.15"))
 
     ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "true").lower() == "true"
+
+    SWAGGER_USER = os.getenv("SWAGGER_USER")
+    SWAGGER_PASSWORD = os.getenv("SWAGGER_PASSWORD")

@@ -47,13 +47,34 @@ service (real-time `elevators_availability`), are excluded when
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
+| POST | `/search` | — | search top-N itineraries from a point/address/station |
 | POST | `/auth/signup` | — | create account |
 | POST | `/auth/login` | — | get JWT |
 | GET/POST | `/subscriptions` | JWT | list / create subscription |
 | DELETE | `/subscriptions/<id>` | JWT | delete subscription |
-| POST | `/notifications/preview/<id>` | JWT | compute top-2 routes now |
+| POST | `/notifications/preview/<id>` | JWT | compute best routes now |
 | GET | `/notifications` | JWT | notification history |
 | GET | `/health` | — | liveness |
+
+`/search` payload — `origin`/`destination` each accept one of `{address}`,
+`{lat, lon}`, or `{station}`:
+
+```json
+{
+  "origin": {"address": "29 rue de Rivoli, Paris"},
+  "destination": {"station": "La Défense"},
+  "time": "08:00",
+  "accessible_required": true,
+  "crowding_sensitivity": 2,
+  "minimize_walking": true,
+  "max_transfers": 1,
+  "top_n": 3
+}
+```
+
+Addresses are geocoded via the French BAN API; coordinates are matched to the
+nearest stops (`dim_stops`), and the point→stop walking distance feeds the walking
+criterion. Subscriptions reuse the same engine (`engine.params_from_subscription`).
 
 Subscription payload:
 

@@ -24,6 +24,14 @@ def _parse(data):
 @bp.get("")
 @jwt_required()
 def list_subscriptions():
+    """List my subscriptions.
+    ---
+    tags: [subscriptions]
+    security: [{Bearer: []}]
+    responses:
+      200: {description: array of subscriptions}
+      401: {description: missing or invalid token}
+    """
     items = Subscription.query.filter_by(user_id=int(get_jwt_identity())).all()
     return jsonify([s.to_dict() for s in items])
 
@@ -31,6 +39,30 @@ def list_subscriptions():
 @bp.post("")
 @jwt_required()
 def create_subscription():
+    """Create a subscription.
+    ---
+    tags: [subscriptions]
+    security: [{Bearer: []}]
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [origin_station, destination_station, notify_time]
+          properties:
+            origin_station: {type: string, example: Châtelet}
+            destination_station: {type: string, example: La Défense}
+            notify_time: {type: string, example: "07:30"}
+            accessible_required: {type: boolean, example: false}
+            crowding_sensitivity: {type: integer, example: 2}
+            minimize_walking: {type: boolean, example: true}
+            max_transfers: {type: integer, example: 1}
+    responses:
+      201: {description: subscription created}
+      400: {description: invalid payload}
+      401: {description: missing or invalid token}
+    """
     data = request.get_json(silent=True) or {}
     try:
         subscription = _parse(data)
@@ -45,6 +77,20 @@ def create_subscription():
 @bp.delete("/<int:subscription_id>")
 @jwt_required()
 def delete_subscription(subscription_id):
+    """Delete one of my subscriptions.
+    ---
+    tags: [subscriptions]
+    security: [{Bearer: []}]
+    parameters:
+      - in: path
+        name: subscription_id
+        required: true
+        type: integer
+    responses:
+      200: {description: deleted}
+      404: {description: not found}
+      401: {description: missing or invalid token}
+    """
     subscription = Subscription.query.filter_by(
         id=subscription_id, user_id=int(get_jwt_identity())
     ).first()

@@ -9,6 +9,27 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 @bp.post("/signup")
 def signup():
+    """Create a user account.
+    ---
+    tags: [auth]
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [email, password, first_name, last_name, phone]
+          properties:
+            email: {type: string, example: test@itineo.fr}
+            password: {type: string, example: secret123}
+            first_name: {type: string, example: Said}
+            last_name: {type: string, example: Sow}
+            phone: {type: string, example: "+33612345678"}
+    responses:
+      201: {description: account created}
+      400: {description: missing required fields}
+      409: {description: email already registered}
+    """
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
@@ -29,6 +50,23 @@ def signup():
 
 @bp.post("/login")
 def login():
+    """Authenticate and get a JWT access token.
+    ---
+    tags: [auth]
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [email, password]
+          properties:
+            email: {type: string, example: test@itineo.fr}
+            password: {type: string, example: secret123}
+    responses:
+      200: {description: returns access_token}
+      401: {description: invalid credentials}
+    """
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""

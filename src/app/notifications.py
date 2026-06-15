@@ -59,6 +59,14 @@ def run_due_notifications():
 @bp.get("")
 @jwt_required()
 def history():
+    """List my notification history.
+    ---
+    tags: [notifications]
+    security: [{Bearer: []}]
+    responses:
+      200: {description: array of notifications}
+      401: {description: missing or invalid token}
+    """
     items = (
         Notification.query.join(Subscription)
         .filter(Subscription.user_id == int(get_jwt_identity()))
@@ -71,6 +79,20 @@ def history():
 @bp.post("/preview/<int:subscription_id>")
 @jwt_required()
 def preview(subscription_id):
+    """Compute the top-2 routes for a subscription now.
+    ---
+    tags: [notifications]
+    security: [{Bearer: []}]
+    parameters:
+      - in: path
+        name: subscription_id
+        required: true
+        type: integer
+    responses:
+      200: {description: ranked routes}
+      404: {description: not found}
+      401: {description: missing or invalid token}
+    """
     subscription = Subscription.query.filter_by(
         id=subscription_id, user_id=int(get_jwt_identity())
     ).first()
