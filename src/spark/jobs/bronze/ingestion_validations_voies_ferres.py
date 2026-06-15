@@ -181,7 +181,7 @@ if not len(data):
 
 dbg("PRIM VALIDATIONS RESPONSE", data)
 
-tmp_bucket = "tmp-spark"
+tmp_bucket = os.getenv("SPARK_TMP_BUCKET", "tmp-spark")
 run_id = f"{datetime.utcnow():%Y-%m-%dT%H%M%S}-{secrets.token_hex(8)}"
 s3_prefix = f"validations/{run_id}"
 

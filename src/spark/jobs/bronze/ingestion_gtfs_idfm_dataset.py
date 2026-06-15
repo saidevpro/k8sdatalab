@@ -55,7 +55,7 @@ resp = requests.get(zip_path, headers=headers, timeout=60, stream=True)
 resp.raise_for_status()
 zip_bytes = io.BytesIO(resp.content)
 
-tmp_bucket = "tmp-spark"
+tmp_bucket = os.getenv("SPARK_TMP_BUCKET", "tmp-spark")
 run_id = f"{datetime.utcnow():%Y-%m-%dT%H%M%S}-{secrets.token_hex(8)}"
 s3_prefix = f"ingestions/gtfs/{run_id}"
 

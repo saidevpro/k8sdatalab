@@ -1,0 +1,963 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Datalab - batch data processing on AWS EMR Serverless (mirror of the on-prem
+  Airflow batch DAGs). Provisions network, KMS, S3 warehouse, Glue catalog,
+  parameters/secrets, IAM, ECR (+push user), EMR Serverless application with
+  shared Spark config, per-layer CloudWatch log groups, and Step Functions
+  state machines (one per DAG) triggered by EventBridge Scheduler.
+
+# ---------------------------------------------------------------------------
+# Deploy in 2 phases (the Spark jobs are baked into a custom image):
+#   1. Deploy WITHOUT SparkImageUri  -> creates ECR repo, push user, network,
+#      storage, catalog, params/secrets, IAM, log groups.
+#   2. Build & push the aws-spark-emr image to the created ECR repo.
+#   3. Re-deploy WITH SparkImageUri=<repo-uri>:<tag> -> creates the EMR
+#      Serverless application, Step Functions state machines and schedules.
+# ---------------------------------------------------------------------------
+
+Parameters:
+  Prefix:
+    Type: String
+    Default: datalab
+    Description: Name prefix for all resources.
+  SparkImageUri:
+    Type: String
+    Default: ""
+    Description: >
+      ECR image URI (repo:tag) of the aws-spark-emr image. Leave empty for
+      phase 1; set it for phase 2 to create the EMR app and orchestration.
+  PrimDatasetUri:
+    Type: String
+    Default: "https://data.iledefrance-mobilites.fr"
+    Description: Base URI of the Ile-de-France Mobilites PRIM data platform.
+  PrimDatasetToken:
+    Type: String
+    Default: "REPLACE_ME"
+    NoEcho: true
+    Description: PRIM API token (stored in Secrets Manager).
+  EmrReleaseLabel:
+    Type: String
+    Default: emr-7.9.0
+
+Conditions:
+  HasImage: !Not [!Equals [!Ref SparkImageUri, ""]]
+
+Resources:
+
+  # =========================================================================
+  # NETWORK
+  # No VPC attachment: an EMR Serverless application without a
+  # NetworkConfiguration runs on an AWS-managed network that HAS internet
+  # egress by default (reaches data.iledefrance-mobilites.fr + AWS APIs), with
+  # no NAT gateway cost. Add a VPC + NAT only if jobs must reach private
+  # resources (e.g. an in-VPC database).
+  # =========================================================================
+
+  # =========================================================================
+  # KMS  (warehouse data encryption)
+  # =========================================================================
+  WarehouseKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "${Prefix} warehouse data encryption key"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: RootAccountAdmin
+            Effect: Allow
+            Principal: { AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root" }
+            Action: "kms:*"
+            Resource: "*"
+
+  WarehouseKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${Prefix}-warehouse"
+      TargetKeyId: !Ref WarehouseKey
+
+  # =========================================================================
+  # STORAGE
+  # =========================================================================
+  WarehouseBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${Prefix}-warehouse"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt WarehouseKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  LogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${Prefix}-logs"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Scratch bucket for jobs that stage extracted files (gtfs / validations).
+  TmpBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${Prefix}-tmp-spark"
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-tmp
+            Status: Enabled
+            ExpirationInDays: 2
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # =========================================================================
+  # GLUE DATA CATALOG  (Iceberg namespaces = Glue databases)
+  # =========================================================================
+  BronzeDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: { Name: bronze }
+
+  SilverDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: { Name: silver }
+
+  GoldDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: { Name: gold }
+
+  # =========================================================================
+  # CONFIG  (SSM = simple values, Secrets Manager = secrets)
+  # =========================================================================
+  PrimUriParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${Prefix}/prim/dataset-uri"
+      Type: String
+      Value: !Ref PrimDatasetUri
+
+  PrimTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${Prefix}/prim/token"
+      Description: PRIM API token
+      SecretString: !Ref PrimDatasetToken
+
+  # =========================================================================
+  # ECR  (+ push user with access/secret key)
+  # =========================================================================
+  SparkRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${Prefix}-spark-emr"
+      ImageScanningConfiguration: { ScanOnPush: true }
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEmrServerlessPull
+            Effect: Allow
+            Principal: { Service: emr-serverless.amazonaws.com }
+            Action:
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+
+  EcrPushUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub "${Prefix}-ecr-push"
+      Policies:
+        - PolicyName: ecr-push
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Auth
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: PushPull
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !GetAtt SparkRepository.Arn
+
+  EcrPushAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref EcrPushUser
+
+  # =========================================================================
+  # IAM ROLES
+  # =========================================================================
+  EmrJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Prefix}-emr-job-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: emr-serverless.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: s3-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource:
+                  - !GetAtt WarehouseBucket.Arn
+                  - !GetAtt LogsBucket.Arn
+                  - !GetAtt TmpBucket.Arn
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource:
+                  - !Sub "${WarehouseBucket.Arn}/*"
+                  - !Sub "${LogsBucket.Arn}/*"
+                  - !Sub "${TmpBucket.Arn}/*"
+        - PolicyName: glue-catalog
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetDatabases
+                  - glue:CreateDatabase
+                  - glue:GetTable
+                  - glue:GetTables
+                  - glue:CreateTable
+                  - glue:UpdateTable
+                  - glue:DeleteTable
+                  - glue:BatchCreatePartition
+                  - glue:CreatePartition
+                  - glue:UpdatePartition
+                  - glue:DeletePartition
+                  - glue:GetPartition
+                  - glue:GetPartitions
+                  - glue:BatchGetPartition
+                Resource:
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/*"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/*"
+        - PolicyName: kms-warehouse
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [kms:Decrypt, kms:Encrypt, kms:GenerateDataKey, kms:DescribeKey]
+                Resource: !GetAtt WarehouseKey.Arn
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents, logs:DescribeLogStreams, logs:DescribeLogGroups]
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Prefix}/emr/*"
+
+  StepFunctionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Prefix}-sfn-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: states.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: emr-serverless
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - emr-serverless:StartJobRun
+                  - emr-serverless:GetJobRun
+                  - emr-serverless:CancelJobRun
+                Resource:
+                  - !Sub "arn:aws:emr-serverless:${AWS::Region}:${AWS::AccountId}:/applications/*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt EmrJobRole.Arn
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref PrimTokenSecret
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Prefix}-scheduler-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: start-sfn
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${Prefix}-*"
+
+  # =========================================================================
+  # CLOUDWATCH LOG GROUPS  (grouped by layer; stream prefix = domain/dataset)
+  # =========================================================================
+  BronzeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${Prefix}/emr/bronze"
+      RetentionInDays: 14
+  SilverLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${Prefix}/emr/silver"
+      RetentionInDays: 14
+  GoldLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${Prefix}/emr/gold"
+      RetentionInDays: 14
+
+  # =========================================================================
+  # EMR SERVERLESS APPLICATION  (shared Spark config lives here)
+  # =========================================================================
+  SparkApplication:
+    Type: AWS::EMRServerless::Application
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-spark"
+      ReleaseLabel: !Ref EmrReleaseLabel
+      Type: SPARK
+      Architecture: X86_64
+      ImageConfiguration: { ImageUri: !Ref SparkImageUri }
+      AutoStartConfiguration: { Enabled: true }
+      AutoStopConfiguration: { Enabled: true, IdleTimeoutMinutes: 15 }
+      MaximumCapacity: { Cpu: "16 vCPU", Memory: "64 GB", Disk: "200 GB" }
+      RuntimeConfiguration:
+        - Classification: spark-defaults
+          Properties:
+            spark.sql.extensions: org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+            spark.sql.catalog.glue_catalog: org.apache.iceberg.spark.SparkCatalog
+            spark.sql.catalog.glue_catalog.catalog-impl: org.apache.iceberg.aws.glue.GlueCatalog
+            spark.sql.catalog.glue_catalog.io-impl: org.apache.iceberg.aws.s3.S3FileIO
+            spark.sql.catalog.glue_catalog.warehouse: !Sub "s3://${Prefix}-warehouse/warehouse/"
+            spark.sql.catalog.glue_catalog.glue.id: !Ref AWS::AccountId
+            spark.sql.catalog.glue_catalog.s3.sse.type: kms
+            spark.sql.catalog.glue_catalog.s3.sse.key: !GetAtt WarehouseKey.Arn
+            spark.sql.shuffle.partitions: "20"
+            spark.sql.adaptive.enabled: "true"
+            spark.emr-serverless.driverEnv.ICEBERG_CATALOG_NAME: glue_catalog
+            spark.executorEnv.ICEBERG_CATALOG_NAME: glue_catalog
+            spark.emr-serverless.driverEnv.SPARK_TMP_BUCKET: !Sub "${Prefix}-tmp-spark"
+
+  # =========================================================================
+  # STEP FUNCTIONS  (one per batch DAG: bronze -> silver -> gold)
+  # =========================================================================
+  AccessibilitesStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: HasImage
+    Properties:
+      StateMachineName: !Sub "${Prefix}-etl-accessibilites-gares"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "accessibilites_gares: bronze -> silver -> gold",
+            "StartAt": "GetToken",
+            "States": {
+              "GetToken": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::aws-sdk:secretsmanager:getSecretValue",
+                "Parameters": { "SecretId": "${SecretArn}" },
+                "ResultPath": "$.prim",
+                "Next": "Bronze"
+              },
+              "Bronze": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "ingestion-accessibilites-gares--bronze",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
+                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-small.conf --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=accessibilite-en-gare --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.accessibility_gares --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "accessibilites_gares"
+                  } } }
+                },
+                "Next": "Silver"
+              },
+              "Silver": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "transformation-accessibilites-gares--silver",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/silver/accessibilites/transform_accessiblites_gares__silver.py",
+                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix": "accessibilites_gares"
+                  } } }
+                },
+                "Next": "Gold"
+              },
+              "Gold": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "publishing-accessibilites-gares--gold",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/gold/accessibility/gold_station_accessibility.py",
+                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix": "accessibilites_gares"
+                  } } }
+                },
+                "End": true
+              }
+            }
+          }
+        - AppId: !Ref SparkApplication
+          JobRole: !GetAtt EmrJobRole.Arn
+          SecretArn: !Ref PrimTokenSecret
+          PrimUri: !Ref PrimDatasetUri
+
+  ElevatorsStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: HasImage
+    Properties:
+      StateMachineName: !Sub "${Prefix}-etl-elevators"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "elevators: bronze -> silver -> gold",
+            "StartAt": "GetToken",
+            "States": {
+              "GetToken": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::aws-sdk:secretsmanager:getSecretValue",
+                "Parameters": { "SecretId": "${SecretArn}" },
+                "ResultPath": "$.prim",
+                "Next": "Bronze"
+              },
+              "Bronze": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "ingestion-elevators--bronze",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
+                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-small.conf --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=etat-des-ascenseurs --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.elevators --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "elevators"
+                  } } }
+                },
+                "Next": "Silver"
+              },
+              "Silver": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "transformation-elevators--silver",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/silver/elevators/silver_elevators.py",
+                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix": "elevators"
+                  } } }
+                },
+                "Next": "Gold"
+              },
+              "Gold": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "publishing-elevators--gold",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/gold/elevators/gold_elevators.py",
+                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix": "elevators"
+                  } } }
+                },
+                "End": true
+              }
+            }
+          }
+        - AppId: !Ref SparkApplication
+          JobRole: !GetAtt EmrJobRole.Arn
+          SecretArn: !Ref PrimTokenSecret
+          PrimUri: !Ref PrimDatasetUri
+
+  RelationsStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: HasImage
+    Properties:
+      StateMachineName: !Sub "${Prefix}-etl-relations"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "relations: bronze only",
+            "StartAt": "GetToken",
+            "States": {
+              "GetToken": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::aws-sdk:secretsmanager:getSecretValue",
+                "Parameters": { "SecretId": "${SecretArn}" },
+                "ResultPath": "$.prim",
+                "Next": "Bronze"
+              },
+              "Bronze": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "ingestion-relations--bronze",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
+                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-small.conf --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=relations --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.relations --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "relations"
+                  } } }
+                },
+                "End": true
+              }
+            }
+          }
+        - AppId: !Ref SparkApplication
+          JobRole: !GetAtt EmrJobRole.Arn
+          SecretArn: !Ref PrimTokenSecret
+          PrimUri: !Ref PrimDatasetUri
+
+  CalendarStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: HasImage
+    Properties:
+      StateMachineName: !Sub "${Prefix}-etl-calendar"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "calendar: bronze -> silver",
+            "StartAt": "Bronze",
+            "States": {
+              "Bronze": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "ingestion-calendar--bronze",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_calendar_reference.py",
+                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-medium.conf"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "calendar"
+                  } } }
+                },
+                "Next": "Silver"
+              },
+              "Silver": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "transformation-calendar-day-type--silver",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/silver/calendar/silver_day_type_calendar.py",
+                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-medium.conf"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix": "calendar"
+                  } } }
+                },
+                "End": true
+              }
+            }
+          }
+        - AppId: !Ref SparkApplication
+          JobRole: !GetAtt EmrJobRole.Arn
+
+  GtfsStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: HasImage
+    Properties:
+      StateMachineName: !Sub "${Prefix}-etl-gtfs"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "gtfs: bronze -> silver(map) -> gold(map)",
+            "StartAt": "GetToken",
+            "States": {
+              "GetToken": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::aws-sdk:secretsmanager:getSecretValue",
+                "Parameters": { "SecretId": "${SecretArn}" },
+                "ResultPath": "$.prim",
+                "Next": "Bronze"
+              },
+              "Bronze": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "ingestion-gtfs--bronze",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_gtfs_idfm_dataset.py",
+                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-medium.conf --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_TOKEN={}', $.prim.SecretString)"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "gtfs"
+                  } } }
+                },
+                "ResultPath": null,
+                "Next": "SilverList"
+              },
+              "SilverList": {
+                "Type": "Pass",
+                "Result": [
+                  {"t":"calendar_dates","p":"medium"},{"t":"calendars","p":"medium"},
+                  {"t":"trips","p":"medium"},{"t":"pathways","p":"medium"},
+                  {"t":"transfers","p":"medium"},{"t":"stop_times","p":"large"},
+                  {"t":"routes","p":"medium"},{"t":"wheelchairs","p":"medium"},
+                  {"t":"stop_entrances","p":"medium"},{"t":"stations","p":"medium"},
+                  {"t":"stop_points","p":"medium"}
+                ],
+                "ResultPath": "$.tables",
+                "Next": "Silver"
+              },
+              "Silver": {
+                "Type": "Map",
+                "ItemsPath": "$.tables",
+                "MaxConcurrency": 3,
+                "ItemProcessor": {
+                  "ProcessorConfig": { "Mode": "INLINE" },
+                  "StartAt": "SilverJob",
+                  "States": {
+                    "SilverJob": {
+                      "Type": "Task",
+                      "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                      "Parameters": {
+                        "ApplicationId": "${AppId}",
+                        "ExecutionRoleArn": "${JobRole}",
+                        "Name.$": "States.Format('transformation-gtfs-{}--silver', $.t)",
+                        "JobDriver": { "SparkSubmit": {
+                          "EntryPoint.$": "States.Format('local:///opt/spark/jobs/silver/gtfs/transform_{}.py', $.t)",
+                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                        } },
+                        "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                          "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix.$": "States.Format('gtfs_{}', $.t)"
+                        } } }
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                "ResultPath": null,
+                "Next": "GoldList"
+              },
+              "GoldList": {
+                "Type": "Pass",
+                "Result": [
+                  {"n":"dim_stops","a":"gold/gtfs/dim_stops.py","p":"medium"},
+                  {"n":"trip_schedule","a":"gold/gtfs/trip_schedule.py","p":"large"},
+                  {"n":"service_calendar","a":"gold/gtfs/service_calendar.py","p":"medium"},
+                  {"n":"transfer_walking","a":"gold/gtfs/transfer_walking.py","p":"medium"}
+                ],
+                "ResultPath": "$.golds",
+                "Next": "Gold"
+              },
+              "Gold": {
+                "Type": "Map",
+                "ItemsPath": "$.golds",
+                "MaxConcurrency": 2,
+                "ItemProcessor": {
+                  "ProcessorConfig": { "Mode": "INLINE" },
+                  "StartAt": "GoldJob",
+                  "States": {
+                    "GoldJob": {
+                      "Type": "Task",
+                      "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                      "Parameters": {
+                        "ApplicationId": "${AppId}",
+                        "ExecutionRoleArn": "${JobRole}",
+                        "Name.$": "States.Format('publishing-gtfs-{}--gold', $.n)",
+                        "JobDriver": { "SparkSubmit": {
+                          "EntryPoint.$": "States.Format('local:///opt/spark/jobs/{}', $.a)",
+                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                        } },
+                        "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                          "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix.$": "States.Format('gtfs_{}', $.n)"
+                        } } }
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                "End": true
+              }
+            }
+          }
+        - AppId: !Ref SparkApplication
+          JobRole: !GetAtt EmrJobRole.Arn
+          SecretArn: !Ref PrimTokenSecret
+          PrimUri: !Ref PrimDatasetUri
+
+  ValidationsStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Condition: HasImage
+    Properties:
+      StateMachineName: !Sub "${Prefix}-etl-validations"
+      RoleArn: !GetAtt StepFunctionsRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "validations: bronze -> silver(map) -> gold(map)",
+            "StartAt": "GetToken",
+            "States": {
+              "GetToken": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::aws-sdk:secretsmanager:getSecretValue",
+                "Parameters": { "SecretId": "${SecretArn}" },
+                "ResultPath": "$.prim",
+                "Next": "Bronze"
+              },
+              "Bronze": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                "Parameters": {
+                  "ApplicationId": "${AppId}",
+                  "ExecutionRoleArn": "${JobRole}",
+                  "Name": "ingestion-validations--bronze",
+                  "JobDriver": { "SparkSubmit": {
+                    "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_validations_voies_ferres.py",
+                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-medium.conf --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                  } },
+                  "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                    "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "validations"
+                  } } }
+                },
+                "ResultPath": null,
+                "Next": "SilverList"
+              },
+              "SilverList": {
+                "Type": "Pass",
+                "Result": [
+                  {"n":"validations_daily","a":"silver/validations/silver_validations_daily.py","p":"medium"},
+                  {"n":"validations_hourly_profile","a":"silver/validations/silver_validations_hourly_profile.py","p":"medium"}
+                ],
+                "ResultPath": "$.jobs",
+                "Next": "Silver"
+              },
+              "Silver": {
+                "Type": "Map",
+                "ItemsPath": "$.jobs",
+                "MaxConcurrency": 2,
+                "ItemProcessor": {
+                  "ProcessorConfig": { "Mode": "INLINE" },
+                  "StartAt": "SilverJob",
+                  "States": {
+                    "SilverJob": {
+                      "Type": "Task",
+                      "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                      "Parameters": {
+                        "ApplicationId": "${AppId}",
+                        "ExecutionRoleArn": "${JobRole}",
+                        "Name.$": "States.Format('transformation-validations-{}--silver', $.n)",
+                        "JobDriver": { "SparkSubmit": {
+                          "EntryPoint.$": "States.Format('local:///opt/spark/jobs/{}', $.a)",
+                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                        } },
+                        "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                          "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix.$": "States.Format('validations_{}', $.n)"
+                        } } }
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                "ResultPath": null,
+                "Next": "GoldList"
+              },
+              "GoldList": {
+                "Type": "Pass",
+                "Result": [
+                  {"n":"validations_dashboards","a":"gold/validations/gold_validations_dashboards.py","p":"medium"},
+                  {"n":"crowding_features","a":"gold/validations/crowding_features.py","p":"large"}
+                ],
+                "ResultPath": "$.golds",
+                "Next": "Gold"
+              },
+              "Gold": {
+                "Type": "Map",
+                "ItemsPath": "$.golds",
+                "MaxConcurrency": 2,
+                "ItemProcessor": {
+                  "ProcessorConfig": { "Mode": "INLINE" },
+                  "StartAt": "GoldJob",
+                  "States": {
+                    "GoldJob": {
+                      "Type": "Task",
+                      "Resource": "arn:aws:states:::emr-serverless:startJobRun.sync",
+                      "Parameters": {
+                        "ApplicationId": "${AppId}",
+                        "ExecutionRoleArn": "${JobRole}",
+                        "Name.$": "States.Format('publishing-validations-{}--gold', $.n)",
+                        "JobDriver": { "SparkSubmit": {
+                          "EntryPoint.$": "States.Format('local:///opt/spark/jobs/{}', $.a)",
+                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                        } },
+                        "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
+                          "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix.$": "States.Format('validations_{}', $.n)"
+                        } } }
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                "End": true
+              }
+            }
+          }
+        - AppId: !Ref SparkApplication
+          JobRole: !GetAtt EmrJobRole.Arn
+          SecretArn: !Ref PrimTokenSecret
+          PrimUri: !Ref PrimDatasetUri
+
+  # =========================================================================
+  # EVENTBRIDGE SCHEDULER  (cron triggers mirroring the Airflow schedules)
+  # =========================================================================
+  AccessibilitesSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-etl-accessibilites-gares"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      ScheduleExpression: "cron(0 2 * * ? *)"
+      Target:
+        Arn: !Ref AccessibilitesStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  ElevatorsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-etl-elevators"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      ScheduleExpression: "cron(0 0/4 * * ? *)"
+      Target:
+        Arn: !Ref ElevatorsStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  RelationsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-etl-relations"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      ScheduleExpression: "cron(0 1 * * ? *)"
+      Target:
+        Arn: !Ref RelationsStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  CalendarSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-etl-calendar"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      ScheduleExpression: "cron(0 3 1 * ? *)"
+      Target:
+        Arn: !Ref CalendarStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  GtfsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-etl-gtfs"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      ScheduleExpression: "cron(0 0/4 * * ? *)"
+      Target:
+        Arn: !Ref GtfsStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+  ValidationsSchedule:
+    Type: AWS::Scheduler::Schedule
+    Condition: HasImage
+    Properties:
+      Name: !Sub "${Prefix}-etl-validations"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      ScheduleExpression: "cron(0 4 1 1 ? *)"
+      Target:
+        Arn: !Ref ValidationsStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+
+Outputs:
+  EcrRepositoryUri:
+    Description: Push the aws-spark-emr image here, then redeploy with SparkImageUri.
+    Value: !GetAtt SparkRepository.RepositoryUri
+  EcrPushAccessKeyId:
+    Description: Access key id for the ECR push user.
+    Value: !Ref EcrPushAccessKey
+  EcrPushSecretAccessKey:
+    Description: Secret access key for the ECR push user (store securely).
+    Value: !GetAtt EcrPushAccessKey.SecretAccessKey
+  WarehouseBucketName:
+    Value: !Ref WarehouseBucket
+  WarehouseKmsKeyArn:
+    Value: !GetAtt WarehouseKey.Arn
+  EmrApplicationId:
+    Condition: HasImage
+    Value: !Ref SparkApplication
