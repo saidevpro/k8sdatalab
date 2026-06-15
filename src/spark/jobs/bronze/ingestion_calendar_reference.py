@@ -52,6 +52,7 @@ def appendToBronze(sparkSession, df, dest_table):
 spark = SparkSession.builder.getOrCreate()
 
 catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.bronze")
 
 ingestion_date = current_timestamp()
 

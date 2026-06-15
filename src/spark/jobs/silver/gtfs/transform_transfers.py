@@ -5,6 +5,7 @@ import os
 spark = SparkSession.builder.getOrCreate()
 
 catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.silver")
 
 transfers_df = spark.sql(f"""
 SELECT * FROM {catalog_name}.bronze.transfers

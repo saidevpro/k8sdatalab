@@ -90,6 +90,8 @@ print(f"Uploaded {len(uploaded_keys)} files", uploaded_keys)
 
 spark = SparkSession.builder.getOrCreate()
 
+spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {catalog_namespace}")
+
 ########################### TRANSFERT ##########################
 transfers_df = (
     spark.read

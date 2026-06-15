@@ -5,6 +5,7 @@ import os
 spark = SparkSession.builder.getOrCreate()
 
 catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.silver")
 
 
 def gtfs_time_to_seconds(col_name):

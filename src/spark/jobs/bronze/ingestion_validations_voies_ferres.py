@@ -157,6 +157,7 @@ def normalize_to_schema(df, expected_columns):
 spark = SparkSession.builder.getOrCreate()
 
 catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.bronze")
 
 PRIM_DATASET_URL = os.getenv("PRIM_DATASET_URI")
 ENDPOINT = "/histo-validations-reseau-ferre/exports/json"
