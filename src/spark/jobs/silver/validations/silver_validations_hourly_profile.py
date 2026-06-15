@@ -1,12 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
-dfo = spark.sql("""
-SELECT * FROM nessie.bronze.validations_profil
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
+dfo = spark.sql(f"""
+SELECT * FROM {catalog_name}.bronze.validations_profil
 WHERE ingestion_date = (
-    SELECT MAX(ingestion_date) FROM nessie.bronze.validations_profil
+    SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.validations_profil
 )
 """)
 
@@ -30,8 +33,8 @@ df.show(5)
 
 df.createOrReplaceTempView("validations_hourly_profile_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.validations_hourly_profile (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.validations_hourly_profile (
     stif_trns       INTEGER,
     stif_res        INTEGER,
     stif_arret      INTEGER,
@@ -46,8 +49,8 @@ USING iceberg
 PARTITIONED BY (cat_jour)
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.validations_hourly_profile AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.validations_hourly_profile AS target
 USING validations_hourly_profile_staging AS source
 ON target.stif_trns = source.stif_trns
 AND target.stif_res = source.stif_res

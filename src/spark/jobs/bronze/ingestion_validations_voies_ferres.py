@@ -156,6 +156,8 @@ def normalize_to_schema(df, expected_columns):
 
 spark = SparkSession.builder.getOrCreate()
 
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
 PRIM_DATASET_URL = os.getenv("PRIM_DATASET_URI")
 ENDPOINT = "/histo-validations-reseau-ferre/exports/json"
 DATASET_API_KEY = os.getenv("PRIM_DATASET_TOKEN")
@@ -289,7 +291,7 @@ for key in nb_keys:
         appendToBronze(
             sparkSession=spark,
             df=df_nb,
-            dest_table="nessie.bronze.validations_nb"
+            dest_table=f"{catalog_name}.bronze.validations_nb"
         )
 
     except Exception as e:
@@ -328,7 +330,7 @@ for key in profil_keys:
         appendToBronze(
             sparkSession=spark,
             df=df_profil,
-            dest_table="nessie.bronze.validations_profil"
+            dest_table=f"{catalog_name}.bronze.validations_profil"
         )
 
     except Exception as e:

@@ -1,13 +1,16 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
 feries = (
-    spark.sql("""
-        SELECT * FROM nessie.bronze.jours_feries
+    spark.sql(f"""
+        SELECT * FROM {catalog_name}.bronze.jours_feries
         WHERE ingestion_date = (
-            SELECT MAX(ingestion_date) FROM nessie.bronze.jours_feries
+            SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.jours_feries
         )
     """)
     .select(F.to_date(F.col("date")).alias("holiday_date"))
@@ -16,10 +19,10 @@ feries = (
 )
 
 vacances = (
-    spark.sql("""
-        SELECT * FROM nessie.bronze.vacances_scolaires
+    spark.sql(f"""
+        SELECT * FROM {catalog_name}.bronze.vacances_scolaires
         WHERE ingestion_date = (
-            SELECT MAX(ingestion_date) FROM nessie.bronze.vacances_scolaires
+            SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.vacances_scolaires
         )
     """)
     .where(F.col("zones") == "Zone C")
@@ -87,8 +90,8 @@ df.show(5)
 
 df.createOrReplaceTempView("day_type_calendar_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.day_type_calendar (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.day_type_calendar (
     date              DATE,
     cat_jour          STRING,
     is_holiday        BOOLEAN,
@@ -100,8 +103,8 @@ USING iceberg
 PARTITIONED BY (months(date))
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.day_type_calendar AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.day_type_calendar AS target
 USING day_type_calendar_staging AS source
 ON target.date = source.date
 WHEN MATCHED THEN UPDATE SET

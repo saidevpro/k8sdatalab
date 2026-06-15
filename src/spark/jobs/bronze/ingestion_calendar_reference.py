@@ -51,6 +51,8 @@ def appendToBronze(sparkSession, df, dest_table):
 
 spark = SparkSession.builder.getOrCreate()
 
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
 ingestion_date = current_timestamp()
 
 feries_resp = requests.get(JOURS_FERIES_URL, timeout=30)
@@ -69,7 +71,7 @@ feries_df = (
 
 feries_df.show(5, truncate=False)
 
-appendToBronze(spark, feries_df, "nessie.bronze.jours_feries")
+appendToBronze(spark, feries_df, f"{catalog_name}.bronze.jours_feries")
 
 vacances_resp = requests.get(VACANCES_SCOLAIRES_URL, timeout=60)
 vacances_resp.raise_for_status()
@@ -93,6 +95,6 @@ vacances_df = (
 
 vacances_df.show(5, truncate=False)
 
-appendToBronze(spark, vacances_df, "nessie.bronze.vacances_scolaires")
+appendToBronze(spark, vacances_df, f"{catalog_name}.bronze.vacances_scolaires")
 
 spark.stop()

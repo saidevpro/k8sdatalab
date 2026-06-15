@@ -1,12 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
-dfo = spark.sql("""
-SELECT * FROM nessie.bronze.stops
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
+dfo = spark.sql(f"""
+SELECT * FROM {catalog_name}.bronze.stops
 WHERE ingestion_date = (
-    SELECT MAX(ingestion_date) FROM nessie.bronze.stops
+    SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.stops
 )
 """)
 
@@ -33,8 +36,8 @@ wheelchairs_df.show(5)
 
 wheelchairs_df.createOrReplaceTempView("wheelchairs_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.wheelchairs (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.wheelchairs (
     stop_id              INTEGER,
     stop_name            STRING,
     location_type        INTEGER,
@@ -43,8 +46,8 @@ CREATE TABLE IF NOT EXISTS nessie.silver.wheelchairs (
 USING iceberg
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.wheelchairs AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.wheelchairs AS target
 USING wheelchairs_staging AS source
 ON target.stop_id = source.stop_id
 WHEN MATCHED THEN UPDATE SET

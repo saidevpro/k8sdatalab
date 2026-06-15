@@ -1,12 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
-calendar_df = spark.sql("""
-SELECT * FROM nessie.bronze.calendars
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
+calendar_df = spark.sql(f"""
+SELECT * FROM {catalog_name}.bronze.calendars
 WHERE ingestion_date = (
-    SELECT MAX(ingestion_date) FROM nessie.bronze.calendars
+    SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.calendars
 )
 """)
 
@@ -22,8 +25,8 @@ calendar_df.show(5)
 
 calendar_df.createOrReplaceTempView("calendars_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.calendars (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.calendars (
     service_id  STRING,
     monday      INTEGER,
     tuesday     INTEGER,
@@ -38,8 +41,8 @@ CREATE TABLE IF NOT EXISTS nessie.silver.calendars (
 USING iceberg
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.calendars AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.calendars AS target
 USING calendars_staging AS source
 ON target.service_id = source.service_id
 WHEN MATCHED THEN UPDATE SET

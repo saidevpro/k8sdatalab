@@ -1,12 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
-pathways_df = spark.sql("""
-SELECT * FROM nessie.bronze.pathways
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
+pathways_df = spark.sql(f"""
+SELECT * FROM {catalog_name}.bronze.pathways
 WHERE ingestion_date = (
-    SELECT MAX(ingestion_date) FROM nessie.bronze.pathways
+    SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.pathways
 )
 """)
 
@@ -21,8 +24,8 @@ pathways_df.show(5)
 
 pathways_df.createOrReplaceTempView("pathways_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.pathways (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.pathways (
     pathway_id        STRING,
     from_stop_id      INTEGER,
     to_stop_id        INTEGER,
@@ -34,8 +37,8 @@ CREATE TABLE IF NOT EXISTS nessie.silver.pathways (
 USING iceberg
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.pathways AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.pathways AS target
 USING pathways_staging AS source
 ON target.pathway_id = source.pathway_id
 WHEN MATCHED THEN UPDATE SET

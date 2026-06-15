@@ -6,8 +6,8 @@ from pyspark.sql.types import ArrayType, StringType, StructField, StructType
 from pyspark.sql.window import Window
 
 
-SOURCE_TABLE = os.getenv("SOURCE_TABLE", "nessie.bronze.disruptions")
 catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+SOURCE_TABLE = os.getenv("SOURCE_TABLE", f"{catalog_name}.bronze.disruptions")
 SILVER_NAMESPACE = os.getenv("SILVER_NAMESPACE", "silver")
 
 MESSAGES_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.disruption_messages"

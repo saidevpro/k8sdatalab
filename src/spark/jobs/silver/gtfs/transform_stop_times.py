@@ -1,7 +1,10 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
+
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 
 
 def gtfs_time_to_seconds(col_name):
@@ -13,10 +16,10 @@ def gtfs_time_to_seconds(col_name):
     )
 
 
-stop_times = spark.sql("""
-SELECT * FROM nessie.bronze.stop_times
+stop_times = spark.sql(f"""
+SELECT * FROM {catalog_name}.bronze.stop_times
 WHERE ingestion_date = (
-    SELECT MAX(ingestion_date) FROM nessie.bronze.stop_times
+    SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.stop_times
 )
 """)
 
@@ -34,8 +37,8 @@ stop_times.show(5)
 
 stop_times.createOrReplaceTempView("stop_times_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.stop_times (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.stop_times (
     trip_id            STRING,
     arrival_time       STRING,
     departure_time     STRING,
@@ -50,8 +53,8 @@ CREATE TABLE IF NOT EXISTS nessie.silver.stop_times (
 USING iceberg
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.stop_times AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.stop_times AS target
 USING stop_times_staging AS source
 ON target.trip_id = source.trip_id
 AND target.stop_sequence = source.stop_sequence

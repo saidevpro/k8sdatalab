@@ -1,12 +1,15 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
-routes_df = spark.sql("""
-SELECT * FROM nessie.bronze.routes
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+
+routes_df = spark.sql(f"""
+SELECT * FROM {catalog_name}.bronze.routes
 WHERE ingestion_date = (
-    SELECT MAX(ingestion_date) FROM nessie.bronze.routes
+    SELECT MAX(ingestion_date) FROM {catalog_name}.bronze.routes
 )
 """)
 routes_df = routes_df.withColumn("route_id", F.split(F.col("route_id"), ":").getItem(1)) \
@@ -17,8 +20,8 @@ routes_df.show(5)
 
 routes_df.createOrReplaceTempView("routes_staging")
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS nessie.silver.routes (
+spark.sql(f"""
+CREATE TABLE IF NOT EXISTS {catalog_name}.silver.routes (
     route_id          STRING,
     agency_id         STRING,
     route_short_name  STRING,
@@ -30,8 +33,8 @@ CREATE TABLE IF NOT EXISTS nessie.silver.routes (
 USING iceberg
 """)
 
-spark.sql("""
-MERGE INTO nessie.silver.routes AS target
+spark.sql(f"""
+MERGE INTO {catalog_name}.silver.routes AS target
 USING routes_staging AS source
 ON target.route_id = source.route_id
 WHEN MATCHED THEN UPDATE SET

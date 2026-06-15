@@ -1,14 +1,17 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
+import os
 
 spark = SparkSession.builder.getOrCreate()
 
-BRONZE_TABLE = "nessie.bronze.elevators"
-CURRENT_TABLE = "nessie.silver.elevators_current"
-HISTORY_TABLE = "nessie.silver.elevators_history"
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
 
-spark.sql("CREATE NAMESPACE IF NOT EXISTS nessie.silver")
+BRONZE_TABLE = f"{catalog_name}.bronze.elevators"
+CURRENT_TABLE = f"{catalog_name}.silver.elevators_current"
+HISTORY_TABLE = f"{catalog_name}.silver.elevators_history"
+
+spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.silver")
 
 spark.sql(f"""
 CREATE TABLE IF NOT EXISTS {CURRENT_TABLE} (
