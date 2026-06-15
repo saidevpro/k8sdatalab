@@ -10,8 +10,8 @@ Serverless. Same Spark jobs run both on-prem (k3s/MinIO/Nessie) and on AWS
 |------|----------|
 | Network | None — EMR Serverless runs on the AWS-managed network (internet egress, no NAT cost) |
 | Encryption | KMS key `alias/datalab-warehouse` (warehouse data SSE-KMS) |
-| Storage | `datalab-warehouse`, `datalab-logs`, `datalab-tmp-spark` buckets |
-| Catalog | Glue databases `bronze`, `silver`, `gold` (Iceberg namespaces) |
+| Storage | `datalab-{warehouse,logs,tmp-spark}-<account-id>` buckets (account id suffix keeps the global S3 names unique) |
+| Catalog | Glue databases `bronze`, `silver`, `gold` — created by the jobs (`CREATE NAMESPACE IF NOT EXISTS`), not by this stack |
 | Config | SSM `/datalab/prim/dataset-uri` (value), Secrets Manager `datalab/prim/token` (secret) |
 | Image | ECR repo `datalab-spark-emr` + IAM push user (access key/secret in stack outputs) |
 | Compute | EMR Serverless app `datalab-spark` with **shared** Spark config (Iceberg + Glue + S3FileIO) |
@@ -50,7 +50,7 @@ spark.sql.extensions               = org.apache.iceberg.spark.extensions.Iceberg
 spark.sql.catalog.glue_catalog               = org.apache.iceberg.spark.SparkCatalog
 spark.sql.catalog.glue_catalog.catalog-impl  = org.apache.iceberg.aws.glue.GlueCatalog
 spark.sql.catalog.glue_catalog.io-impl       = org.apache.iceberg.aws.s3.S3FileIO
-spark.sql.catalog.glue_catalog.warehouse     = s3://datalab-warehouse/warehouse/
+spark.sql.catalog.glue_catalog.warehouse     = s3://datalab-warehouse-<account-id>/warehouse/
 spark.sql.catalog.glue_catalog.s3.sse.type   = kms
 spark.sql.catalog.glue_catalog.s3.sse.key    = <warehouse KMS key arn>
 spark.emr-serverless.driverEnv.ICEBERG_CATALOG_NAME = glue_catalog
@@ -62,23 +62,27 @@ Glue databases.
 
 ## Deploy
 
-Requires: AWS CLI v2, Docker with buildx, an authenticated AWS profile.
+Requires: AWS CLI v2, an authenticated AWS profile. The `aws-spark-emr` image is
+built by the **CI image pipeline** (`.github/workflows/docker-build.yml`), which
+pushes it to the ECR repo of the same name — this stack references that repo
+(`SparkRepoName`), it does not create or build it.
 
 ```bash
-PRIM_TOKEN='your-prim-api-token' AWS_REGION=eu-west-3 ./aws/deploy.sh
+# 1. infra (no EMR app yet — empty SparkImageUri / HasImage false)
+AWS_REGION=eu-west-3 ./aws/deploy.sh phase1
+
+# 2. build the image in CI (skip if aws-spark-emr:3.5.8 already exists):
+#    push a change under src/spark/jobs or .confs/spark, OR run the
+#    "Build & publish Docker images" workflow with force_build=aws-spark-emr:3.5.8
+
+# 3. EMR app + Step Functions + schedules (reads the repo URI from the outputs)
+PRIM_TOKEN='your-prim-api-token' AWS_REGION=eu-west-3 ./aws/deploy.sh phase2
 ```
 
-This runs three steps (also runnable individually — `phase1`, `build`, `phase2`):
-
-1. **phase1** — creates everything except the EMR app/orchestration (gated by
-   the `HasImage` condition, empty `SparkImageUri`).
-2. **build** — reads the ECR URI from the stack outputs, builds
-   `docker-images/aws-spark-emr/3.5.8/Dockerfile` for `linux/amd64`, pushes it.
-3. **phase2** — redeploys with `SparkImageUri=<repo>:3.5.8`, which creates the
-   EMR Serverless application, the 6 state machines and the schedules.
-
-Get the push user credentials (if pushing manually) from the stack outputs:
-`EcrPushAccessKeyId` / `EcrPushSecretAccessKey`.
+The local `./aws/deploy.sh build` step still works if you have Docker with buildx,
+but CI is the normal path. The stack-managed push user (`EcrPushAccessKeyId` /
+`EcrPushSecretAccessKey` outputs) is scoped to push/pull on `aws-spark-emr` for
+that manual flow.
 
 ## Run a pipeline on demand
 
@@ -117,5 +121,6 @@ set the app's `NetworkConfiguration` to those subnets/SG.
   (`secretsmanager:getSecretValue`) and passed as a driver env var, so it
   appears in the execution history. Acceptable for a POC; for production fetch
   it inside the job instead.
-- **Global bucket names.** `datalab-*` must be globally unique — change
-  `Prefix` if taken.
+- **Global bucket names.** Bucket names carry the `-<account-id>` suffix to stay
+  globally unique, so `Prefix=datalab` is fine. Glue databases are not stack-managed,
+  so a pre-existing `bronze`/`silver`/`gold` no longer blocks the deploy.

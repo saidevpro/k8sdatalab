@@ -20,6 +20,12 @@ Parameters:
     Type: String
     Default: datalab
     Description: Name prefix for all resources.
+  SparkRepoName:
+    Type: String
+    Default: aws-spark-emr
+    Description: >
+      Existing ECR repository (built and owned by the CI image pipeline) that
+      holds the aws-spark-emr image. Referenced, not created, by this stack.
   SparkImageUri:
     Type: String
     Default: ""
@@ -82,7 +88,7 @@ Resources:
   WarehouseBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${Prefix}-warehouse"
+      BucketName: !Sub "${Prefix}-warehouse-${AWS::AccountId}"
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -98,7 +104,7 @@ Resources:
   LogsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${Prefix}-logs"
+      BucketName: !Sub "${Prefix}-logs-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -109,7 +115,7 @@ Resources:
   TmpBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${Prefix}-tmp-spark"
+      BucketName: !Sub "${Prefix}-tmp-spark-${AWS::AccountId}"
       LifecycleConfiguration:
         Rules:
           - Id: expire-tmp
@@ -123,24 +129,9 @@ Resources:
 
   # =========================================================================
   # GLUE DATA CATALOG  (Iceberg namespaces = Glue databases)
+  # Created by the Spark jobs (CREATE NAMESPACE IF NOT EXISTS), not managed
+  # here, so the stack is idempotent against a pre-existing catalog.
   # =========================================================================
-  BronzeDatabase:
-    Type: AWS::Glue::Database
-    Properties:
-      CatalogId: !Ref AWS::AccountId
-      DatabaseInput: { Name: bronze }
-
-  SilverDatabase:
-    Type: AWS::Glue::Database
-    Properties:
-      CatalogId: !Ref AWS::AccountId
-      DatabaseInput: { Name: silver }
-
-  GoldDatabase:
-    Type: AWS::Glue::Database
-    Properties:
-      CatalogId: !Ref AWS::AccountId
-      DatabaseInput: { Name: gold }
 
   # =========================================================================
   # CONFIG  (SSM = simple values, Secrets Manager = secrets)
@@ -161,22 +152,10 @@ Resources:
 
   # =========================================================================
   # ECR  (+ push user with access/secret key)
+  # The aws-spark-emr repository is built and owned by the CI image pipeline
+  # (its EMR-pull repository policy lives there), so it is referenced via
+  # SparkRepoName, not created here.
   # =========================================================================
-  SparkRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub "${Prefix}-spark-emr"
-      ImageScanningConfiguration: { ScanOnPush: true }
-      RepositoryPolicyText:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowEmrServerlessPull
-            Effect: Allow
-            Principal: { Service: emr-serverless.amazonaws.com }
-            Action:
-              - ecr:BatchGetImage
-              - ecr:GetDownloadUrlForLayer
-
   EcrPushUser:
     Type: AWS::IAM::User
     Properties:
@@ -188,7 +167,9 @@ Resources:
             Statement:
               - Sid: Auth
                 Effect: Allow
-                Action: ecr:GetAuthorizationToken
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:DescribeRepositories
                 Resource: "*"
               - Sid: PushPull
                 Effect: Allow
@@ -200,7 +181,7 @@ Resources:
                   - ecr:PutImage
                   - ecr:BatchGetImage
                   - ecr:GetDownloadUrlForLayer
-                Resource: !GetAtt SparkRepository.Arn
+                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${SparkRepoName}"
 
   EcrPushAccessKey:
     Type: AWS::IAM::AccessKey
@@ -274,8 +255,11 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: [logs:CreateLogStream, logs:PutLogEvents, logs:DescribeLogStreams, logs:DescribeLogGroups]
-                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Prefix}/emr/*"
+                Action: logs:DescribeLogGroups
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents, logs:DescribeLogStreams]
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Prefix}/emr/*:log-stream:*"
 
   StepFunctionsRole:
     Type: AWS::IAM::Role
@@ -305,6 +289,12 @@ Resources:
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Ref PrimTokenSecret
+              - Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:PutTargets
+                  - events:DescribeRule
+                Resource: !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForEMRServerlessJobRule"
 
   SchedulerRole:
     Type: AWS::IAM::Role
@@ -366,7 +356,7 @@ Resources:
             spark.sql.catalog.glue_catalog: org.apache.iceberg.spark.SparkCatalog
             spark.sql.catalog.glue_catalog.catalog-impl: org.apache.iceberg.aws.glue.GlueCatalog
             spark.sql.catalog.glue_catalog.io-impl: org.apache.iceberg.aws.s3.S3FileIO
-            spark.sql.catalog.glue_catalog.warehouse: !Sub "s3://${Prefix}-warehouse/warehouse/"
+            spark.sql.catalog.glue_catalog.warehouse: !Sub "s3://${Prefix}-warehouse-${AWS::AccountId}/warehouse/"
             spark.sql.catalog.glue_catalog.glue.id: !Ref AWS::AccountId
             spark.sql.catalog.glue_catalog.s3.sse.type: kms
             spark.sql.catalog.glue_catalog.s3.sse.key: !GetAtt WarehouseKey.Arn
@@ -374,7 +364,7 @@ Resources:
             spark.sql.adaptive.enabled: "true"
             spark.emr-serverless.driverEnv.ICEBERG_CATALOG_NAME: glue_catalog
             spark.executorEnv.ICEBERG_CATALOG_NAME: glue_catalog
-            spark.emr-serverless.driverEnv.SPARK_TMP_BUCKET: !Sub "${Prefix}-tmp-spark"
+            spark.emr-serverless.driverEnv.SPARK_TMP_BUCKET: !Sub "${Prefix}-tmp-spark-${AWS::AccountId}"
 
   # =========================================================================
   # STEP FUNCTIONS  (one per batch DAG: bronze -> silver -> gold)
@@ -947,7 +937,7 @@ Resources:
 Outputs:
   EcrRepositoryUri:
     Description: Push the aws-spark-emr image here, then redeploy with SparkImageUri.
-    Value: !GetAtt SparkRepository.RepositoryUri
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${SparkRepoName}"
   EcrPushAccessKeyId:
     Description: Access key id for the ECR push user.
     Value: !Ref EcrPushAccessKey

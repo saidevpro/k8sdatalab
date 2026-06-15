@@ -26,3 +26,4 @@ RUN chown -R hadoop:hadoop /app/spark/confs /opt/spark/jobs \
     && chmod -R g=u /app/spark/confs /opt/spark/jobs
 
 USER hadoop:hadoop
+
