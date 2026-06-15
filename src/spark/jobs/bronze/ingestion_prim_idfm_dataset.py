@@ -3,17 +3,21 @@ from pyspark.sql import functions as F
 import os
 import requests as rq
 
+
 spark = SparkSession.builder.getOrCreate()
 
-nessie_catalog_name = 'nessie'
-nessie_ref = spark.conf.get("spark.sql.catalog.nessie.ref")
-nessie_namespace = os.getenv("NESSIE_NAMESPACE")
+catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
+namespace = os.getenv("NESSIE_NAMESPACE", "bronze")
 
-DEST_NAMESPACE = f"{nessie_catalog_name}.{nessie_namespace}"
+DEST_NAMESPACE = f"{catalog_name}.{namespace}"
+
 PRIM_DATASET_URI = os.getenv("PRIM_DATASET_URI")
 PRIM_DATASET_TOKEN = os.getenv("PRIM_DATASET_TOKEN")
 DATASET = os.getenv("DATASET")
 DEST_TABLE = os.getenv("DESTINATION_TABLE")
+
+if not DEST_TABLE:
+    DEST_TABLE = f"{DEST_NAMESPACE}.{DATASET.replace('-', '_')}"
 
 DATASET_URL = f"{PRIM_DATASET_URI}/{DATASET}/exports/csv"
 
@@ -21,7 +25,7 @@ headers = {
     "Authorization": f"apikey {PRIM_DATASET_TOKEN}"
 }
 
-r = rq.get(f"{DATASET_URL}", headers=headers, timeout=120)
+r = rq.get(DATASET_URL, headers=headers, timeout=120)
 r.raise_for_status()
 
 lines = r.content.decode("utf-8").splitlines()
@@ -43,8 +47,6 @@ df.show()
 
 df = df.withColumn("ingestion_date", F.current_date())
 
-# spark.sql(
-#     f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {nessie_catalog_name} FROM main")
 spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {DEST_NAMESPACE}")
 
 if not spark.catalog.tableExists(DEST_TABLE):
