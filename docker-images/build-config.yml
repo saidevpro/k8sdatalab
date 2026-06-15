@@ -25,6 +25,12 @@ images:
       - src/spark/jobs
       - .confs/spark
 
+  - image: aws-spark-emr
+    version: 3.5.8
+    depends_on:
+      - src/spark/jobs
+      - .confs/spark
+
   - image: jupyterhub-datalab
     version: spark-3.5.8
     depends_on_images:
