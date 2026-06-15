@@ -21,7 +21,7 @@ headers = {
     "Authorization": f"apikey {PRIM_DATASET_TOKEN}"
 }
 
-r = rq.get(f"{DATASET_URL}", headers=headers, timeout=30)
+r = rq.get(f"{DATASET_URL}", headers=headers, timeout=120)
 r.raise_for_status()
 
 lines = r.content.decode("utf-8").splitlines()
