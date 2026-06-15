@@ -10,9 +10,9 @@ TARGET_BRANCH = os.getenv("TARGET_BRANCH", "main")
 spark = SparkSession.builder.getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
 
-spark.sql(
-    f"CREATE BRANCH IF NOT EXISTS {TARGET_BRANCH} IN {NESSIE_CATALOG} FROM main"
-)
+# spark.sql(
+    # f"CREATE BRANCH IF NOT EXISTS {TARGET_BRANCH} IN {NESSIE_CATALOG} FROM main"
+# )
 
 spark.sql(
     f"MERGE BRANCH {SOURCE_BRANCH} INTO {TARGET_BRANCH} IN {NESSIE_CATALOG}"

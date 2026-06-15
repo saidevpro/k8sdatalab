@@ -43,8 +43,8 @@ df.show()
 
 df = df.withColumn("ingestion_date", F.current_date())
 
-spark.sql(
-    f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {nessie_catalog_name} FROM main")
+# spark.sql(
+#     f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {nessie_catalog_name} FROM main")
 spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {DEST_NAMESPACE}")
 
 if not spark.catalog.tableExists(DEST_TABLE):
