@@ -1,0 +1,34 @@
+# OpenMetadata Profiler workflow for the medallion lakehouse.
+# Connects to the already-registered Trino service ("lakehouse") and computes
+# column metrics (null %, distinct %, min/max/mean, sample data) for every
+# bronze / silver / gold table. hostPort and jwtToken are injected at runtime
+# from the Airflow Variables OPENMETADATA_HOST_PORT / OPENMETADATA_JWT_TOKEN.
+source:
+  type: trino
+  serviceName: trino
+  sourceConfig:
+    config:
+      type: Profiler
+      generateSampleData: true
+      profileSample: 50
+      databaseFilterPattern:
+        includes:
+          - "^lakehouse$"
+      schemaFilterPattern:
+        includes:
+          - "^bronze$"
+          - "^silver$"
+          - "^gold$"
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata.observability.svc.cluster.local:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ""

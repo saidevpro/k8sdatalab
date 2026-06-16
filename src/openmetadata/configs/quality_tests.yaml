@@ -1,0 +1,85 @@
+# Declarative data-quality tests for the product-critical gold/silver tables.
+# Each entry becomes one OpenMetadata TestSuite executed against `entity`.
+# FQN = <service>.<database>.<schema>.<table> -> trino.lakehouse.<schema>.<table>
+# (service = "trino", database = the Trino catalog "lakehouse").
+# Île-de-France bounding box used for coordinate sanity: lat 48.0-49.3, lon 1.4-3.6.
+suites:
+  - entity: trino.lakehouse.silver.stop_areas
+    tests:
+      - name: stop_areas_station_id_not_null
+        testDefinitionName: columnValuesToBeNotNull
+        columnName: station_id
+      - name: stop_areas_station_id_unique
+        testDefinitionName: columnValuesToBeUnique
+        columnName: station_id
+      - name: stop_areas_lat_in_idf
+        testDefinitionName: columnValuesToBeBetween
+        columnName: station_lat
+        parameterValues:
+          - { name: minValue, value: "48.0" }
+          - { name: maxValue, value: "49.3" }
+      - name: stop_areas_lon_in_idf
+        testDefinitionName: columnValuesToBeBetween
+        columnName: station_lon
+        parameterValues:
+          - { name: minValue, value: "1.4" }
+          - { name: maxValue, value: "3.6" }
+      - name: stop_areas_row_count_positive
+        testDefinitionName: tableRowCountToBeBetween
+        parameterValues:
+          - { name: minValue, value: "1" }
+          - { name: maxValue, value: "100000" }
+
+  - entity: trino.lakehouse.gold.station_accessibility
+    tests:
+      - name: station_accessibility_level_not_null
+        testDefinitionName: columnValuesToBeNotNull
+        columnName: accessibility_level_id
+      - name: station_accessibility_pct_in_range
+        testDefinitionName: columnValuesToBeBetween
+        columnName: pct_elevators_available
+        parameterValues:
+          - { name: minValue, value: "0" }
+          - { name: maxValue, value: "100" }
+
+  - entity: trino.lakehouse.gold.elevators_availability
+    tests:
+      - name: elevators_pct_available_in_range
+        testDefinitionName: columnValuesToBeBetween
+        columnName: pct_available
+        parameterValues:
+          - { name: minValue, value: "0" }
+          - { name: maxValue, value: "100" }
+      - name: elevators_available_not_exceeding_total
+        testDefinitionName: tableCustomSQLQuery
+        parameterValues:
+          - name: sqlExpression
+            value: >-
+              SELECT count(*) FROM "lakehouse"."gold"."elevators_availability"
+              WHERE nb_available > nb_elevators
+          - { name: strategy, value: "COUNT" }
+          - { name: threshold, value: "0" }
+
+  - entity: trino.lakehouse.gold.dim_stops
+    tests:
+      - name: dim_stops_stop_id_not_null
+        testDefinitionName: columnValuesToBeNotNull
+        columnName: stop_id
+      - name: dim_stops_stop_id_unique
+        testDefinitionName: columnValuesToBeUnique
+        columnName: stop_id
+      - name: dim_stops_wheelchair_boarding_in_set
+        testDefinitionName: columnValuesToBeInSet
+        columnName: wheelchair_boarding
+        parameterValues:
+          - name: allowedValues
+            value: "[0, 1, 2]"
+
+  - entity: trino.lakehouse.gold.transfer_walking
+    tests:
+      - name: transfer_walking_from_not_null
+        testDefinitionName: columnValuesToBeNotNull
+        columnName: from_stop_id
+      - name: transfer_walking_to_not_null
+        testDefinitionName: columnValuesToBeNotNull
+        columnName: to_stop_id

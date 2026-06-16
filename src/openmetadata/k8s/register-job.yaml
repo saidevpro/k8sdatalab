@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: openmetadata-register
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: register
+          image: docker.getcollate.io/openmetadata/ingestion-base:1.12.8
+          command: ["python", "/app/register.py"]
+          env:
+            - name: OPENMETADATA_HOST_PORT
+              value: http://openmetadata.observability.svc.cluster.local:8585/api
+            - name: OPENMETADATA_DB_SERVICE
+              value: trino
+            - name: OPENMETADATA_JWT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: openmetadata-bot
+                  key: jwt-token
+          volumeMounts:
+            - name: script
+              mountPath: /app/register.py
+              subPath: register.py
+            - name: configs
+              mountPath: /app/configs
+      volumes:
+        - name: script
+          configMap:
+            name: om-register-script
+        - name: configs
+          configMap:
+            name: om-register-configs

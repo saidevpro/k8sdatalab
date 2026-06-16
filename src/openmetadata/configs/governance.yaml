@@ -1,0 +1,45 @@
+# Declarative governance vocabulary for the IDF mobility platform.
+# The DAG creates the glossary, the classifications and their tags, then tags
+# each medallion schema with its Tier. PII tags are created for use on any
+# personal-data service (e.g. the application Postgres) connected to OpenMetadata.
+glossary:
+  name: IDFMobilite
+  displayName: "Île-de-France Mobilité"
+  description: "Business glossary for the IDF public-transport route-recommendation platform."
+  terms:
+    - name: Station
+      description: "A public-transport stop area (GTFS location_type=1) within Île-de-France."
+    - name: Route
+      description: "An ordered sequence of legs from an origin to a destination served by transit lines."
+    - name: Transfer
+      description: "A change between two transit legs, including the walking distance between stops."
+    - name: Accessibility
+      description: "Suitability of a station/route for reduced-mobility users (elevators, no stairs)."
+    - name: Elevator
+      description: "A station elevator whose real-time status can exclude or downgrade a route."
+    - name: Crowding
+      description: "Estimated passenger density at a stop, derived from Navigo validation history."
+    - name: Reliability
+      description: "Predicted on-time performance of a route from the archived real-time history."
+
+classifications:
+  - name: Tier
+    description: "Medallion layer of a dataset."
+    tags:
+      - { name: Bronze, description: "Raw ingested data, schema-on-read." }
+      - { name: Silver, description: "Cleaned and conformed data." }
+      - { name: Gold, description: "Curated, business-ready data." }
+  - name: PII
+    description: "Personally Identifiable Information sensitivity."
+    tags:
+      - { name: Sensitive, description: "Direct personal data (e.g. email, name)." }
+      - { name: NonSensitive, description: "Indirect or low-risk personal data." }
+
+# schema FQN -> Tier tag applied to the whole medallion layer
+tierAssignments:
+  - schema: trino.lakehouse.bronze
+    tag: Tier.Bronze
+  - schema: trino.lakehouse.silver
+    tag: Tier.Silver
+  - schema: trino.lakehouse.gold
+    tag: Tier.Gold
