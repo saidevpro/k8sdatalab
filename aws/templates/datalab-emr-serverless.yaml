@@ -34,8 +34,10 @@ Parameters:
       phase 1; set it for phase 2 to create the EMR app and orchestration.
   PrimDatasetUri:
     Type: String
-    Default: "https://data.iledefrance-mobilites.fr"
-    Description: Base URI of the Ile-de-France Mobilites PRIM data platform.
+    Default: "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets"
+    Description: >
+      Base URI of the Ile-de-France Mobilites PRIM Explore API; jobs append
+      /<dataset>/exports/csv.
   PrimDatasetToken:
     Type: String
     Default: "REPLACE_ME"
@@ -44,6 +46,22 @@ Parameters:
   EmrReleaseLabel:
     Type: String
     Default: emr-7.9.0
+  NatAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Latest Amazon Linux 2023 x86_64 AMI for the t3.nano NAT instance.
+
+Mappings:
+  # EMR Serverless ignores spark-submit --properties-file, so the size profiles
+  # (mirroring .confs/spark/aws/spark-{small,medium,large}.conf) are injected
+  # inline as --conf into each job's SparkSubmitParameters.
+  SparkSizing:
+    small:
+      Conf: "--conf spark.executor.instances=1 --conf spark.executor.cores=1 --conf spark.executor.memory=2g --conf spark.driver.cores=1 --conf spark.driver.memory=2g"
+    medium:
+      Conf: "--conf spark.executor.instances=2 --conf spark.executor.cores=2 --conf spark.executor.memory=4g --conf spark.driver.cores=2 --conf spark.driver.memory=4g"
+    large:
+      Conf: "--conf spark.executor.instances=2 --conf spark.executor.cores=4 --conf spark.executor.memory=8g --conf spark.driver.cores=4 --conf spark.driver.memory=8g"
 
 Conditions:
   HasImage: !Not [!Equals [!Ref SparkImageUri, ""]]
@@ -52,12 +70,125 @@ Resources:
 
   # =========================================================================
   # NETWORK
-  # No VPC attachment: an EMR Serverless application without a
-  # NetworkConfiguration runs on an AWS-managed network that HAS internet
-  # egress by default (reaches data.iledefrance-mobilites.fr + AWS APIs), with
-  # no NAT gateway cost. Add a VPC + NAT only if jobs must reach private
-  # resources (e.g. an in-VPC database).
+  # EMR's default managed network is IPv6-only and cannot reach the IPv4-only
+  # PRIM data host (data.iledefrance-mobilites.fr). Jobs run in private subnets
+  # and egress IPv4 through a t4g.nano NAT instance (far cheaper than a managed
+  # NAT gateway). An S3 gateway endpoint keeps warehouse traffic off the NAT.
   # =========================================================================
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags: [{ Key: Name, Value: !Sub "${Prefix}-vpc" }]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub "${Prefix}-public" }]
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags: [{ Key: Name, Value: !Sub "${Prefix}-private-a" }]
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags: [{ Key: Name, Value: !Sub "${Prefix}-private-b" }]
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { RouteTableId: !Ref PublicRouteTable, SubnetId: !Ref PublicSubnet }
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: { VpcId: !Ref Vpc }
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatRouter
+  PrivateSubnetAAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { RouteTableId: !Ref PrivateRouteTable, SubnetId: !Ref PrivateSubnetA }
+  PrivateSubnetBAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { RouteTableId: !Ref PrivateRouteTable, SubnetId: !Ref PrivateSubnetB }
+
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: [ !Ref PrivateRouteTable ]
+
+  NatSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${Prefix} NAT instance"
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: "-1", CidrIp: 10.0.0.0/16 }
+      SecurityGroupEgress:
+        - { IpProtocol: "-1", CidrIp: 0.0.0.0/0 }
+  EmrSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${Prefix} EMR Serverless jobs"
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - { IpProtocol: "-1", CidrIp: 0.0.0.0/0 }
+
+  NatRouter:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.nano
+      ImageId: !Ref NatAmiId
+      SubnetId: !Ref PublicSubnet
+      SourceDestCheck: false
+      SecurityGroupIds: [ !Ref NatSecurityGroup ]
+      Tags: [{ Key: Name, Value: !Sub "${Prefix}-nat" }]
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -euxo pipefail
+          dnf -y install iptables-nft iptables-services
+          sysctl -w net.ipv4.ip_forward=1
+          echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-nat.conf
+          IFACE=$(ip -o -4 route show to default | awk '{print $5; exit}')
+          iptables -t nat -A POSTROUTING -o "$IFACE" -j MASQUERADE
+          iptables-save > /etc/sysconfig/iptables
+          systemctl enable --now iptables
 
   # =========================================================================
   # KMS  (warehouse data encryption)
@@ -349,6 +480,9 @@ Resources:
       AutoStartConfiguration: { Enabled: true }
       AutoStopConfiguration: { Enabled: true, IdleTimeoutMinutes: 15 }
       MaximumCapacity: { Cpu: "16 vCPU", Memory: "64 GB", Disk: "200 GB" }
+      NetworkConfiguration:
+        SubnetIds: [ !Ref PrivateSubnetA, !Ref PrivateSubnetB ]
+        SecurityGroupIds: [ !Ref EmrSecurityGroup ]
       RuntimeConfiguration:
         - Classification: spark-defaults
           Properties:
@@ -397,7 +531,7 @@ Resources:
                   "Name": "ingestion-accessibilites-gares--bronze",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-small.conf --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=accessibilite-en-gare --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.accessibility_gares --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                    "SparkSubmitParameters.$": "States.Format('${SmallConf} --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=accessibilite-en-gare --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.accessibility_gares --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "accessibilites_gares"
@@ -414,7 +548,7 @@ Resources:
                   "Name": "transformation-accessibilites-gares--silver",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/silver/accessibilites/transform_accessiblites_gares__silver.py",
-                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                    "SparkSubmitParameters": "${SmallConf}"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix": "accessibilites_gares"
@@ -431,7 +565,7 @@ Resources:
                   "Name": "publishing-accessibilites-gares--gold",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/gold/accessibility/gold_station_accessibility.py",
-                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                    "SparkSubmitParameters": "${SmallConf}"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix": "accessibilites_gares"
@@ -445,6 +579,7 @@ Resources:
           JobRole: !GetAtt EmrJobRole.Arn
           SecretArn: !Ref PrimTokenSecret
           PrimUri: !Ref PrimDatasetUri
+          SmallConf: !FindInMap [SparkSizing, small, Conf]
 
   ElevatorsStateMachine:
     Type: AWS::StepFunctions::StateMachine
@@ -474,7 +609,7 @@ Resources:
                   "Name": "ingestion-elevators--bronze",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-small.conf --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=etat-des-ascenseurs --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.elevators --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                    "SparkSubmitParameters.$": "States.Format('${SmallConf} --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=etat-des-ascenseurs --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.elevators --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "elevators"
@@ -491,7 +626,7 @@ Resources:
                   "Name": "transformation-elevators--silver",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/silver/elevators/silver_elevators.py",
-                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                    "SparkSubmitParameters": "${SmallConf}"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix": "elevators"
@@ -508,7 +643,7 @@ Resources:
                   "Name": "publishing-elevators--gold",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/gold/elevators/gold_elevators.py",
-                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-small.conf"
+                    "SparkSubmitParameters": "${SmallConf}"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix": "elevators"
@@ -522,6 +657,7 @@ Resources:
           JobRole: !GetAtt EmrJobRole.Arn
           SecretArn: !Ref PrimTokenSecret
           PrimUri: !Ref PrimDatasetUri
+          SmallConf: !FindInMap [SparkSizing, small, Conf]
 
   RelationsStateMachine:
     Type: AWS::StepFunctions::StateMachine
@@ -551,7 +687,7 @@ Resources:
                   "Name": "ingestion-relations--bronze",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_prim_idfm_dataset.py",
-                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-small.conf --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=relations --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.relations --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                    "SparkSubmitParameters.$": "States.Format('${SmallConf} --conf spark.emr-serverless.driverEnv.NESSIE_NAMESPACE=bronze --conf spark.emr-serverless.driverEnv.DATASET=relations --conf spark.emr-serverless.driverEnv.DESTINATION_TABLE=glue_catalog.bronze.relations --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "relations"
@@ -565,6 +701,7 @@ Resources:
           JobRole: !GetAtt EmrJobRole.Arn
           SecretArn: !Ref PrimTokenSecret
           PrimUri: !Ref PrimDatasetUri
+          SmallConf: !FindInMap [SparkSizing, small, Conf]
 
   CalendarStateMachine:
     Type: AWS::StepFunctions::StateMachine
@@ -587,7 +724,7 @@ Resources:
                   "Name": "ingestion-calendar--bronze",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_calendar_reference.py",
-                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-medium.conf"
+                    "SparkSubmitParameters": "${MediumConf}"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "calendar"
@@ -604,7 +741,7 @@ Resources:
                   "Name": "transformation-calendar-day-type--silver",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/silver/calendar/silver_day_type_calendar.py",
-                    "SparkSubmitParameters": "--properties-file /app/spark/confs/aws/spark-medium.conf"
+                    "SparkSubmitParameters": "${MediumConf}"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix": "calendar"
@@ -616,6 +753,7 @@ Resources:
           }
         - AppId: !Ref SparkApplication
           JobRole: !GetAtt EmrJobRole.Arn
+          MediumConf: !FindInMap [SparkSizing, medium, Conf]
 
   GtfsStateMachine:
     Type: AWS::StepFunctions::StateMachine
@@ -645,7 +783,7 @@ Resources:
                   "Name": "ingestion-gtfs--bronze",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_gtfs_idfm_dataset.py",
-                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-medium.conf --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_TOKEN={}', $.prim.SecretString)"
+                    "SparkSubmitParameters.$": "States.Format('${MediumConf} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_TOKEN={}', $.prim.SecretString)"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "gtfs"
@@ -657,12 +795,12 @@ Resources:
               "SilverList": {
                 "Type": "Pass",
                 "Result": [
-                  {"t":"calendar_dates","p":"medium"},{"t":"calendars","p":"medium"},
-                  {"t":"trips","p":"medium"},{"t":"pathways","p":"medium"},
-                  {"t":"transfers","p":"medium"},{"t":"stop_times","p":"large"},
-                  {"t":"routes","p":"medium"},{"t":"wheelchairs","p":"medium"},
-                  {"t":"stop_entrances","p":"medium"},{"t":"stations","p":"medium"},
-                  {"t":"stop_points","p":"medium"}
+                  {"t":"calendar_dates","p":"${MediumConf}"},{"t":"calendars","p":"${MediumConf}"},
+                  {"t":"trips","p":"${MediumConf}"},{"t":"pathways","p":"${MediumConf}"},
+                  {"t":"transfers","p":"${MediumConf}"},{"t":"stop_times","p":"${LargeConf}"},
+                  {"t":"routes","p":"${MediumConf}"},{"t":"wheelchairs","p":"${MediumConf}"},
+                  {"t":"stop_entrances","p":"${MediumConf}"},{"t":"stations","p":"${MediumConf}"},
+                  {"t":"stop_points","p":"${MediumConf}"}
                 ],
                 "ResultPath": "$.tables",
                 "Next": "Silver"
@@ -684,7 +822,7 @@ Resources:
                         "Name.$": "States.Format('transformation-gtfs-{}--silver', $.t)",
                         "JobDriver": { "SparkSubmit": {
                           "EntryPoint.$": "States.Format('local:///opt/spark/jobs/silver/gtfs/transform_{}.py', $.t)",
-                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                          "SparkSubmitParameters.$": "$.p"
                         } },
                         "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                           "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix.$": "States.Format('gtfs_{}', $.t)"
@@ -700,10 +838,10 @@ Resources:
               "GoldList": {
                 "Type": "Pass",
                 "Result": [
-                  {"n":"dim_stops","a":"gold/gtfs/dim_stops.py","p":"medium"},
-                  {"n":"trip_schedule","a":"gold/gtfs/trip_schedule.py","p":"large"},
-                  {"n":"service_calendar","a":"gold/gtfs/service_calendar.py","p":"medium"},
-                  {"n":"transfer_walking","a":"gold/gtfs/transfer_walking.py","p":"medium"}
+                  {"n":"dim_stops","a":"gold/gtfs/dim_stops.py","p":"${MediumConf}"},
+                  {"n":"trip_schedule","a":"gold/gtfs/trip_schedule.py","p":"${LargeConf}"},
+                  {"n":"service_calendar","a":"gold/gtfs/service_calendar.py","p":"${MediumConf}"},
+                  {"n":"transfer_walking","a":"gold/gtfs/transfer_walking.py","p":"${MediumConf}"}
                 ],
                 "ResultPath": "$.golds",
                 "Next": "Gold"
@@ -725,7 +863,7 @@ Resources:
                         "Name.$": "States.Format('publishing-gtfs-{}--gold', $.n)",
                         "JobDriver": { "SparkSubmit": {
                           "EntryPoint.$": "States.Format('local:///opt/spark/jobs/{}', $.a)",
-                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                          "SparkSubmitParameters.$": "$.p"
                         } },
                         "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                           "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix.$": "States.Format('gtfs_{}', $.n)"
@@ -743,6 +881,8 @@ Resources:
           JobRole: !GetAtt EmrJobRole.Arn
           SecretArn: !Ref PrimTokenSecret
           PrimUri: !Ref PrimDatasetUri
+          MediumConf: !FindInMap [SparkSizing, medium, Conf]
+          LargeConf: !FindInMap [SparkSizing, large, Conf]
 
   ValidationsStateMachine:
     Type: AWS::StepFunctions::StateMachine
@@ -772,7 +912,7 @@ Resources:
                   "Name": "ingestion-validations--bronze",
                   "JobDriver": { "SparkSubmit": {
                     "EntryPoint": "local:///opt/spark/jobs/bronze/ingestion_validations_voies_ferres.py",
-                    "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-medium.conf --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
+                    "SparkSubmitParameters.$": "States.Format('${MediumConf} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_URI=${PrimUri} --conf spark.emr-serverless.driverEnv.PRIM_DATASET_TOKEN={}', $.prim.SecretString)"
                   } },
                   "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                     "Enabled": true, "LogGroupName": "/${Prefix}/emr/bronze", "LogStreamNamePrefix": "validations"
@@ -784,8 +924,8 @@ Resources:
               "SilverList": {
                 "Type": "Pass",
                 "Result": [
-                  {"n":"validations_daily","a":"silver/validations/silver_validations_daily.py","p":"medium"},
-                  {"n":"validations_hourly_profile","a":"silver/validations/silver_validations_hourly_profile.py","p":"medium"}
+                  {"n":"validations_daily","a":"silver/validations/silver_validations_daily.py","p":"${MediumConf}"},
+                  {"n":"validations_hourly_profile","a":"silver/validations/silver_validations_hourly_profile.py","p":"${MediumConf}"}
                 ],
                 "ResultPath": "$.jobs",
                 "Next": "Silver"
@@ -807,7 +947,7 @@ Resources:
                         "Name.$": "States.Format('transformation-validations-{}--silver', $.n)",
                         "JobDriver": { "SparkSubmit": {
                           "EntryPoint.$": "States.Format('local:///opt/spark/jobs/{}', $.a)",
-                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                          "SparkSubmitParameters.$": "$.p"
                         } },
                         "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                           "Enabled": true, "LogGroupName": "/${Prefix}/emr/silver", "LogStreamNamePrefix.$": "States.Format('validations_{}', $.n)"
@@ -823,8 +963,8 @@ Resources:
               "GoldList": {
                 "Type": "Pass",
                 "Result": [
-                  {"n":"validations_dashboards","a":"gold/validations/gold_validations_dashboards.py","p":"medium"},
-                  {"n":"crowding_features","a":"gold/validations/crowding_features.py","p":"large"}
+                  {"n":"validations_dashboards","a":"gold/validations/gold_validations_dashboards.py","p":"${MediumConf}"},
+                  {"n":"crowding_features","a":"gold/validations/crowding_features.py","p":"${LargeConf}"}
                 ],
                 "ResultPath": "$.golds",
                 "Next": "Gold"
@@ -846,7 +986,7 @@ Resources:
                         "Name.$": "States.Format('publishing-validations-{}--gold', $.n)",
                         "JobDriver": { "SparkSubmit": {
                           "EntryPoint.$": "States.Format('local:///opt/spark/jobs/{}', $.a)",
-                          "SparkSubmitParameters.$": "States.Format('--properties-file /app/spark/confs/aws/spark-{}.conf', $.p)"
+                          "SparkSubmitParameters.$": "$.p"
                         } },
                         "ConfigurationOverrides": { "MonitoringConfiguration": { "CloudWatchLoggingConfiguration": {
                           "Enabled": true, "LogGroupName": "/${Prefix}/emr/gold", "LogStreamNamePrefix.$": "States.Format('validations_{}', $.n)"
@@ -864,6 +1004,8 @@ Resources:
           JobRole: !GetAtt EmrJobRole.Arn
           SecretArn: !Ref PrimTokenSecret
           PrimUri: !Ref PrimDatasetUri
+          MediumConf: !FindInMap [SparkSizing, medium, Conf]
+          LargeConf: !FindInMap [SparkSizing, large, Conf]
 
   # =========================================================================
   # EVENTBRIDGE SCHEDULER  (cron triggers mirroring the Airflow schedules)
