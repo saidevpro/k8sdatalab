@@ -22,7 +22,7 @@ def load(name):
 
 def call(method, path, payload=None, content_type=None):
     headers = {"Content-Type": content_type} if content_type else None
-    resp = session.request(method, f"{HOST_PORT}{path}", json=payload, headers=headers)
+    resp = session.request(method, f"{HOST_PORT}/v1{path}", json=payload, headers=headers)
     if resp.status_code >= 400:
         print(f"  {method} {path} -> {resp.status_code} {resp.text[:300]}")
         resp.raise_for_status()
@@ -68,7 +68,7 @@ def register_quality(suites):
     for suite in suites:
         entity = suite["entity"]
         suite_fqn = f"{entity}.testSuite"
-        existing = session.get(f"{HOST_PORT}/dataQuality/testSuites/name/{suite_fqn}")
+        existing = session.get(f"{HOST_PORT}/v1/dataQuality/testSuites/name/{suite_fqn}")
         if existing.status_code == 200:
             suite_obj = existing.json()
         else:
