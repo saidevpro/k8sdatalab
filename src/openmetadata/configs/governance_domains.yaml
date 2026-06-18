@@ -1,0 +1,188 @@
+# Data Mesh organization for the IDF mobility lakehouse: business domains own the
+# medallion tables, data products expose consumable gold bundles, and KPIs (OM
+# Metric entities) document the headline indicators with their SQL definition.
+# Table references are <schema>.<table> under the Trino "lakehouse" catalog.
+
+domains:
+  - name: network_schedules
+    displayName: "Network & Schedules"
+    domainType: "Source-aligned"
+    description: "Static GTFS transit network and timetables: stops, routes, trips, calendars, pathways and transfers. Feeds the theoretical trip-duration and walking-distance scoring criteria."
+    tables:
+      - silver.calendars
+      - silver.calendar_dates
+      - silver.day_type_calendar
+      - silver.routes
+      - silver.trips
+      - silver.stop_times
+      - silver.pathways
+      - silver.transfers
+      - silver.stop_points
+      - silver.stop_areas
+      - silver.stop_entrances
+      - gold.dim_stops
+      - gold.trip_schedule
+      - gold.service_calendar
+      - gold.transfer_walking
+
+  - name: accessibility
+    displayName: "Accessibility"
+    domainType: "Consumer-aligned"
+    description: "Step-free access and real-time elevator status used to exclude or downgrade non-accessible routes."
+    tables:
+      - silver.accessibility_gares
+      - silver.wheelchairs
+      - silver.elevators_current
+      - silver.elevators_history
+      - gold.station_accessibility
+      - gold.elevators_availability
+      - gold.elevators_downtime
+
+  - name: service_reliability
+    displayName: "Service Reliability"
+    domainType: "Consumer-aligned"
+    description: "Disruptions and ML-based delay prediction built on the archived real-time history. Feeds the predicted-reliability scoring criterion."
+    tables:
+      - silver.disruption_messages
+      - silver.disruption_periods
+      - silver.disruption_stops
+      - silver.next_stop
+      - gold.disruptions_active
+      - gold.disruptions_by_line
+      - gold.next_stop_delays
+      - gold.next_stop_features
+      - gold.next_stop_schedule
+      - gold.delays_by_stop
+
+  - name: crowding_ridership
+    displayName: "Crowding & Ridership"
+    domainType: "Consumer-aligned"
+    description: "Navigo ticket-validation history and derived crowding estimates at stops. Feeds the crowding scoring criterion."
+    tables:
+      - silver.validations_daily
+      - silver.validations_hourly_profile
+      - gold.crowding_features
+      - gold.validations_by_category
+      - gold.validations_daily_by_stop
+
+dataProducts:
+  - name: trip_schedules
+    displayName: "Trip Schedules"
+    domain: network_schedules
+    description: "Curated stops dimension, schedules, service calendar and walking transfers used to build candidate routes."
+    assets:
+      - gold.dim_stops
+      - gold.trip_schedule
+      - gold.service_calendar
+      - gold.transfer_walking
+
+  - name: station_accessibility
+    displayName: "Station Accessibility"
+    domain: accessibility
+    description: "Per-station step-free status and live elevator availability used to enforce accessibility constraints."
+    assets:
+      - gold.station_accessibility
+      - gold.elevators_availability
+      - gold.elevators_downtime
+
+  - name: disruptions
+    displayName: "Disruptions"
+    domain: service_reliability
+    description: "Active disruptions and per-line impact summaries surfaced in route scoring and notifications."
+    assets:
+      - gold.disruptions_active
+      - gold.disruptions_by_line
+
+  - name: delay_predictions
+    displayName: "Delay Predictions"
+    domain: service_reliability
+    description: "Per-stop delay features, predictions and on-time aggregates feeding the reliability score."
+    assets:
+      - gold.next_stop_delays
+      - gold.next_stop_features
+      - gold.next_stop_schedule
+      - gold.delays_by_stop
+
+  - name: crowding_insights
+    displayName: "Crowding Insights"
+    domain: crowding_ridership
+    description: "Crowding features and validation aggregates estimating passenger density at stops."
+    assets:
+      - gold.crowding_features
+      - gold.validations_by_category
+      - gold.validations_daily_by_stop
+
+kpis:
+  - name: network_on_time_rate
+    displayName: "Network On-Time Rate"
+    domain: service_reliability
+    metricType: PERCENTAGE
+    unit: PERCENTAGE
+    granularity: DAY
+    description: "Share of monitored arrivals that were on time (passage-weighted across stops)."
+    sql: >-
+      SELECT round(100.0 * sum(nb_passages - nb_delayed) / nullif(sum(nb_passages), 0), 2)
+      FROM lakehouse.gold.delays_by_stop
+
+  - name: avg_arrival_delay_seconds
+    displayName: "Average Arrival Delay (s)"
+    domain: service_reliability
+    metricType: AVERAGE
+    granularity: DAY
+    description: "Passage-weighted mean arrival delay in seconds across all monitored stops. Unit: seconds."
+    sql: >-
+      SELECT round(sum(avg_arrival_delay_sec * nb_passages) / nullif(sum(nb_passages), 0), 1)
+      FROM lakehouse.gold.delays_by_stop
+
+  - name: active_disruptions
+    displayName: "Active Disruptions"
+    domain: service_reliability
+    metricType: COUNT
+    unit: COUNT
+    granularity: DAY
+    description: "Number of currently active network disruptions."
+    sql: >-
+      SELECT count(*) FROM lakehouse.gold.disruptions_active WHERE is_active = true
+
+  - name: step_free_station_rate
+    displayName: "Step-Free Station Rate"
+    domain: accessibility
+    metricType: PERCENTAGE
+    unit: PERCENTAGE
+    granularity: DAY
+    description: "Share of stations with at least one elevator currently in service (step-free reachable)."
+    sql: >-
+      SELECT round(100.0 * sum(case when nb_available > 0 then 1 else 0 end) / nullif(count(*), 0), 2)
+      FROM lakehouse.gold.station_accessibility
+
+  - name: elevator_availability_rate
+    displayName: "Elevator Availability Rate"
+    domain: accessibility
+    metricType: PERCENTAGE
+    unit: PERCENTAGE
+    granularity: DAY
+    description: "Share of network elevators currently operational."
+    sql: >-
+      SELECT round(100.0 * sum(nb_available) / nullif(sum(nb_elevators), 0), 2)
+      FROM lakehouse.gold.elevators_availability
+
+  - name: avg_transfer_walking_distance_m
+    displayName: "Average Transfer Walking Distance (m)"
+    domain: network_schedules
+    metricType: AVERAGE
+    granularity: DAY
+    description: "Mean walking distance of transfer pathways. Unit: meters."
+    sql: >-
+      SELECT round(avg(pathway_length_m), 1)
+      FROM lakehouse.gold.transfer_walking WHERE pathway_length_m IS NOT NULL
+
+  - name: daily_validation_volume
+    displayName: "Daily Validation Volume"
+    domain: crowding_ridership
+    metricType: SUM
+    unit: COUNT
+    granularity: DAY
+    description: "Total Navigo ticket validations recorded on the most recent day."
+    sql: >-
+      SELECT sum(total_validations) FROM lakehouse.gold.validations_daily_by_stop
+      WHERE jour = (SELECT max(jour) FROM lakehouse.gold.validations_daily_by_stop)

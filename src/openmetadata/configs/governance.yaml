@@ -37,9 +37,9 @@ classifications:
 
 # schema FQN -> Tier tag applied to the whole medallion layer
 tierAssignments:
-  - schema: trino.lakehouse.bronze
+  - schema: Trino.lakehouse.bronze
     tag: Tier.Bronze
-  - schema: trino.lakehouse.silver
+  - schema: Trino.lakehouse.silver
     tag: Tier.Silver
-  - schema: trino.lakehouse.gold
+  - schema: Trino.lakehouse.gold
     tag: Tier.Gold

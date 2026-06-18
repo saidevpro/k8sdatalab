@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(touch /workspace/src/spark/jobs/silver/next_stop/__init__.py && ls /workspace/src/spark/jobs/silver/next_stop/)",
+      "Bash(python -m py_compile src/spark/jobs/bronze/ingestion_stream_next_stop.py src/spark/jobs/silver/next_stop/silver_next_stop.py)",
+      "Bash(python -m py_compile src/spark/jobs/silver/next_stop/silver_next_stop.py src/spark/jobs/gold/next_stop/gold_next_stop.py)",
+      "Bash(mkdir -p silver/validations gold/validations)",
+      "Bash(touch silver/validations/__init__.py gold/validations/__init__.py)",
+      "WebSearch",
+      "Bash(python3 -)",
+      "Bash(cfn-lint aws/templates/datalab-emr-serverless.yaml)",
+      "Bash(pip install *)",
+      "Bash(chmod +x aws/deploy.sh)",
+      "Bash(bash -n aws/deploy.sh)",
+      "Bash(aws --version)",
+      "Read(//root/**)",
+      "Bash(env)",
+      "Bash(sed -E 's/\\(=\\).*/\\\\1 ****/' ~/.aws/credentials)",
+      "Bash(aws sts *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.open-metadata.org)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/airflow/dags/governance_pipelines/openmetadata_governance.py'\\).read\\(\\)\\); print\\('DAG syntax OK'\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/openmetadata/register.py'\\).read\\(\\)\\); print\\('register.py syntax OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/openmetadata/register.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")"
+    ],
+    "additionalDirectories": [
+      "/workspace/src/spark/jobs/silver/next_stop"
+    ]
+  }
+}

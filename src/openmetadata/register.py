@@ -7,7 +7,10 @@ import yaml
 CONFIG_DIR = Path(__file__).parent / "configs"
 HOST_PORT = os.environ.get("OPENMETADATA_HOST_PORT", "http://openmetadata.observability.svc.cluster.local:8585/api")
 JWT_TOKEN = os.environ["OPENMETADATA_JWT_TOKEN"]
-DB_SERVICE = os.environ.get("OPENMETADATA_DB_SERVICE", "trino")
+DB_SERVICE = os.environ.get("OPENMETADATA_DB_SERVICE", "Trino")
+DB_CATALOG = os.environ.get("OPENMETADATA_DB_CATALOG", "lakehouse")
+DQ_SCHEMAS = [s.strip() for s in os.environ.get("DQ_SCHEMAS", "silver,gold").split(",")]
+DQ_SUITE = os.environ.get("DQ_SUITE_NAME", "medallion_quality")
 PROFILER_SCHEDULE = os.environ.get("PROFILER_SCHEDULE", "0 3 * * *")
 QUALITY_SCHEDULE = os.environ.get("QUALITY_SCHEDULE", "0 4 * * *")
 
@@ -29,6 +32,23 @@ def call(method, path, payload=None, content_type=None):
     return resp.json() if resp.content else {}
 
 
+def get_optional(path):
+    resp = session.get(f"{HOST_PORT}/v1{path}")
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    return resp.json()
+
+
+def discovered_schemas():
+    databases = call("GET", f"/databases?service={DB_SERVICE}&limit=100").get("data", [])
+    schemas = []
+    for db in databases:
+        page = call("GET", f"/databaseSchemas?database={db['fullyQualifiedName']}&limit=100")
+        schemas += [s["fullyQualifiedName"] for s in page.get("data", [])]
+    return schemas
+
+
 def deploy(pipeline_id):
     call("POST", f"/services/ingestionPipelines/deploy/{pipeline_id}")
 
@@ -44,8 +64,12 @@ def bootstrap_governance(spec):
         for tag in clf["tags"]:
             call("PUT", "/tags", {"classification": clf["name"], **tag})
 
+    print(f"  schemas known to '{DB_SERVICE}': {discovered_schemas()}")
     for item in spec["tierAssignments"]:
-        schema = call("GET", f"/databaseSchemas/name/{item['schema']}?fields=tags")
+        schema = get_optional(f"/databaseSchemas/name/{item['schema']}?fields=tags")
+        if schema is None:
+            print(f"  skip tier tag, schema not found: {item['schema']}")
+            continue
         if any(t["tagFQN"] == item["tag"] for t in schema.get("tags", [])):
             continue
         patch = [{"op": "add", "path": "/tags/-", "value": {"tagFQN": item["tag"], "source": "Classification"}}]
@@ -64,37 +88,111 @@ def register_profiler(profiler):
     deploy(pipeline["id"])
 
 
-def register_quality(suites):
-    for suite in suites:
-        entity = suite["entity"]
-        suite_fqn = f"{entity}.testSuite"
-        existing = session.get(f"{HOST_PORT}/v1/dataQuality/testSuites/name/{suite_fqn}")
-        if existing.status_code == 200:
-            suite_obj = existing.json()
-        else:
-            suite_obj = call("POST", "/dataQuality/testSuites/executable", {
-                "name": suite_fqn,
-                "description": f"Data-quality suite for {entity}",
-                "executableEntityReference": entity,
-            })
-        for test in suite["tests"]:
-            column = test.get("columnName")
-            entity_link = f"<#E::table::{entity}::columns::{column}>" if column else f"<#E::table::{entity}>"
-            call("PUT", "/dataQuality/testCases", {
-                "name": test["name"],
-                "entityLink": entity_link,
-                "testSuite": f"{entity}.testSuite",
-                "testDefinition": test["testDefinitionName"],
-                "parameterValues": test.get("parameterValues", []),
-            })
-        pipeline = call("PUT", "/services/ingestionPipelines", {
-            "name": f"{entity.replace('.', '_')}_quality",
-            "pipelineType": "TestSuite",
-            "sourceConfig": {"config": {"type": "TestSuite", "entityFullyQualifiedName": entity}},
-            "airflowConfig": {"scheduleInterval": QUALITY_SCHEDULE},
-            "service": {"id": suite_obj["id"], "type": "testSuite"},
+def baseline_tests(table):
+    name = table["name"]
+    tests = [{
+        "name": f"{name}_row_count_positive",
+        "testDefinitionName": "tableRowCountToBeBetween",
+        "parameterValues": [{"name": "minValue", "value": "1"}, {"name": "maxValue", "value": "1000000000"}],
+    }]
+    columns = table.get("columns", [])
+    if columns:
+        key = columns[0]["name"]
+        tests.append({
+            "name": f"{name}_{key}_not_null",
+            "testDefinitionName": "columnValuesToBeNotNull",
+            "columnName": key,
         })
-        deploy(pipeline["id"])
+    return tests
+
+
+def create_test_case(entity, test):
+    column = test.get("columnName")
+    entity_link = f"<#E::table::{entity}::columns::{column}>" if column else f"<#E::table::{entity}>"
+    return call("PUT", "/dataQuality/testCases", {
+        "name": test["name"],
+        "entityLink": entity_link,
+        "testDefinition": test["testDefinitionName"],
+        "parameterValues": test.get("parameterValues", []),
+    })
+
+
+def register_quality(curated_suites):
+    curated = {s["entity"]: s["tests"] for s in curated_suites}
+    case_ids = []
+    for schema in DQ_SCHEMAS:
+        tables = call("GET", f"/tables?databaseSchema={DB_SERVICE}.{DB_CATALOG}.{schema}&fields=columns&limit=1000")
+        for table in tables.get("data", []):
+            entity = table["fullyQualifiedName"]
+            tests = curated.get(entity) or baseline_tests(table)
+            case_ids += [create_test_case(entity, test)["id"] for test in tests]
+            print(f"  {entity}: {len(tests)} tests")
+    suite = call("PUT", "/dataQuality/testSuites", {
+        "name": DQ_SUITE,
+        "description": "All silver/gold medallion data-quality tests, executed in a single run.",
+    })
+    call("PUT", "/dataQuality/testCases/logicalTestCases", {"testSuiteId": suite["id"], "testCaseIds": case_ids})
+    pipeline = call("PUT", "/services/ingestionPipelines", {
+        "name": f"{DQ_SUITE}_run",
+        "pipelineType": "TestSuite",
+        "sourceConfig": {"config": {"type": "TestSuite", "entityFullyQualifiedName": DQ_SUITE}},
+        "airflowConfig": {"scheduleInterval": QUALITY_SCHEDULE},
+        "service": {"id": suite["id"], "type": "testSuite"},
+    })
+    deploy(pipeline["id"])
+    print(f"  logical suite '{DQ_SUITE}': {len(case_ids)} test cases across {len(DQ_SCHEMAS)} schemas, 1 pipeline")
+
+
+def assign_domain(collection, entity_id, domain_id):
+    patch = [{"op": "add", "path": "/domains", "value": [{"id": domain_id, "type": "domain"}]}]
+    call("PATCH", f"/{collection}/{entity_id}", patch, content_type="application/json-patch+json")
+
+
+def table_ref(short_fqn):
+    return get_optional(f"/tables/name/{DB_SERVICE}.{DB_CATALOG}.{short_fqn}")
+
+
+def register_domains(spec):
+    domain_id = {}
+    for d in spec["domains"]:
+        domain = call("PUT", "/domains", {
+            "name": d["name"], "displayName": d["displayName"],
+            "description": d["description"], "domainType": d["domainType"],
+        })
+        domain_id[d["name"]] = domain["id"]
+        for short in d["tables"]:
+            table = table_ref(short)
+            if table is None:
+                print(f"  skip domain asset, table not found: {short}")
+                continue
+            assign_domain("tables", table["id"], domain["id"])
+        print(f"  domain '{d['name']}': {len(d['tables'])} tables")
+
+    for dp in spec["dataProducts"]:
+        call("PUT", "/dataProducts", {
+            "name": dp["name"], "displayName": dp["displayName"],
+            "description": dp["description"], "domains": [dp["domain"]],
+        })
+        assets = [{"id": t["id"], "type": "table"} for t in (table_ref(s) for s in dp["assets"]) if t]
+        if assets:
+            call("PUT", f"/dataProducts/{dp['name']}/assets/add", {"assets": assets})
+        print(f"  data product '{dp['name']}': {len(assets)} assets")
+    return domain_id
+
+
+def register_kpis(spec, domain_id):
+    for k in spec["kpis"]:
+        payload = {
+            "name": k["name"], "displayName": k["displayName"], "description": k["description"],
+            "metricType": k["metricType"], "granularity": k.get("granularity", "DAY"),
+            "metricExpression": {"language": "SQL", "code": k["sql"]},
+        }
+        if k.get("unit"):
+            payload["unitOfMeasurement"] = k["unit"]
+        metric = call("PUT", "/metrics", payload)
+        if k.get("domain") in domain_id:
+            assign_domain("metrics", metric["id"], domain_id[k["domain"]])
+        print(f"  kpi '{k['name']}'")
 
 
 if __name__ == "__main__":
@@ -104,4 +202,8 @@ if __name__ == "__main__":
     register_profiler(load("profiler.yaml"))
     print("registering data-quality test suites...")
     register_quality(load("quality_tests.yaml")["suites"])
+    print("registering domains and data products...")
+    domain_id = register_domains(load("governance_domains.yaml"))
+    print("registering KPIs...")
+    register_kpis(load("governance_domains.yaml"), domain_id)
     print("done")
