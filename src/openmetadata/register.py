@@ -143,9 +143,13 @@ def register_quality(curated_suites):
     print(f"  logical suite '{DQ_SUITE}': {len(case_ids)} test cases across {len(DQ_SCHEMAS)} schemas, 1 pipeline")
 
 
-def assign_domain(collection, entity_id, domain_id):
-    patch = [{"op": "add", "path": "/domains", "value": [{"id": domain_id, "type": "domain"}]}]
+def patch_refs(collection, entity_id, field, refs):
+    patch = [{"op": "add", "path": f"/{field}", "value": refs}]
     call("PATCH", f"/{collection}/{entity_id}", patch, content_type="application/json-patch+json")
+
+
+def assign_domain(collection, entity_id, domain_id):
+    patch_refs(collection, entity_id, "domains", [{"id": domain_id, "type": "domain"}])
 
 
 def table_ref(short_fqn):
@@ -195,6 +199,73 @@ def register_kpis(spec, domain_id):
         print(f"  kpi '{k['name']}'")
 
 
+def register_org(org, domains):
+    for p in org["policies"]:
+        call("PUT", "/policies", {
+            "name": p["name"], "description": p["description"],
+            "rules": [{"name": f"{p['name']}Rule", "resources": ["All"], "operations": p["operations"], "effect": "allow"}],
+        })
+    role_id = {}
+    for r in org["roles"]:
+        role_id[r["name"]] = call("PUT", "/roles", {"name": r["name"], "description": r["description"], "policies": r["policies"]})["id"]
+    for builtin in ("DataSteward", "DataConsumer"):
+        role_id[builtin] = call("GET", f"/roles/name/{builtin}")["id"]
+
+    org_id = call("GET", "/teams/name/Organization")["id"]
+    bu = org["businessUnit"]
+    team_id = {bu["name"]: call("PUT", "/teams", {
+        "name": bu["name"], "displayName": bu["displayName"], "description": bu["description"],
+        "teamType": "BusinessUnit", "parents": [org_id],
+    })["id"]}
+    squad_team, squad_owner = {}, {}
+    for s in org["squads"]:
+        team_id[s["name"]] = call("PUT", "/teams", {
+            "name": s["name"], "displayName": s["displayName"], "teamType": "Group", "parents": [team_id[bu["name"]]],
+        })["id"]
+        squad_team[s["domain"]] = team_id[s["name"]]
+        squad_owner[s["domain"]] = s["owner"]
+
+    user_id = {}
+    for u in org["users"]:
+        user_id[u["name"]] = call("PUT", "/users", {
+            "name": u["name"], "displayName": u["displayName"], "email": u["email"], "description": u["description"],
+            "roles": [role_id[u["role"]]], "teams": [team_id[t] for t in u["teams"]],
+        })["id"]
+        print(f"  user {u['name']} ({u['role']})")
+
+    steward = {"id": user_id[org["steward"]], "type": "user"}
+    engineer = {"id": user_id[org["engineer"]], "type": "user"}
+
+    for d in domains["domains"]:
+        dom = call("GET", f"/domains/name/{d['name']}")
+        owner_user = {"id": user_id[squad_owner[d["name"]]], "type": "user"}
+        patch_refs("domains", dom["id"], "owners", [{"id": squad_team[d["name"]], "type": "team"}])
+        patch_refs("domains", dom["id"], "experts", [owner_user, steward])
+        for short in d["tables"]:
+            table = table_ref(short)
+            if table:
+                patch_refs("tables", table["id"], "owners", [{"id": squad_team[d["name"]], "type": "team"}])
+        print(f"  domain {d['name']}: squad ownership + {len(d['tables'])} tables")
+
+    for dp in domains["dataProducts"]:
+        prod = call("GET", f"/dataProducts/name/{dp['name']}")
+        patch_refs("dataProducts", prod["id"], "owners", [{"id": user_id[squad_owner[dp["domain"]]], "type": "user"}])
+    for k in domains["kpis"]:
+        metric = call("GET", f"/metrics/name/{k['name']}")
+        patch_refs("metrics", metric["id"], "owners", [{"id": user_id[squad_owner[k["domain"]]], "type": "user"}])
+
+    glossary = get_optional(f"/glossaries/name/{org['glossaryName']}")
+    if glossary:
+        patch_refs("glossaries", glossary["id"], "owners", [{"id": user_id[org["glossaryOwner"]], "type": "user"}])
+        patch_refs("glossaries", glossary["id"], "reviewers", [steward])
+
+    targets = (f"{DB_SERVICE}_medallion_profiler", f"{DQ_SUITE}_run")
+    for pipeline in call("GET", "/services/ingestionPipelines?limit=200").get("data", []):
+        if pipeline["name"] in targets:
+            patch_refs("services/ingestionPipelines", pipeline["id"], "owners", [engineer])
+    print(f"  ownership assigned across domains, products, KPIs, glossary and pipelines")
+
+
 if __name__ == "__main__":
     print("bootstrapping governance vocabulary...")
     bootstrap_governance(load("governance.yaml"))
@@ -206,4 +277,6 @@ if __name__ == "__main__":
     domain_id = register_domains(load("governance_domains.yaml"))
     print("registering KPIs...")
     register_kpis(load("governance_domains.yaml"), domain_id)
+    print("registering org, roles, users and ownership...")
+    register_org(load("governance_org.yaml"), load("governance_domains.yaml"))
     print("done")

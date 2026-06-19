@@ -1,0 +1,89 @@
+# Organization, RBAC and ownership for the IDF mobility lakehouse.
+# Reuses the built-in DataSteward / DataConsumer roles and adds two custom
+# personas. A BusinessUnit groups four domain squads (Data Mesh): each squad
+# team owns its domain and that domain's tables; the domain's data-owner user
+# and the steward are registered as experts.
+
+policies:
+  - name: DataOwnerPolicy
+    description: "Data owners are accountable for their assets: they curate ownership, business context, tags, tier and glossary terms."
+    operations: [ViewAll, EditDescription, EditDisplayName, EditOwners, EditTags, EditTier, EditGlossaryTerms]
+  - name: DataEngineerPolicy
+    description: "Data engineers build and operate the pipelines, schemas, lineage and data-quality tests."
+    operations: [ViewAll, Create, EditAll, EditLineage, EditDescription, EditTags]
+
+roles:
+  - name: DataOwner
+    description: "Accountable owner of a data domain / data product."
+    policies: [DataOwnerPolicy]
+  - name: DataEngineer
+    description: "Builds and operates ingestion, transformation and data-quality pipelines."
+    policies: [DataEngineerPolicy]
+
+businessUnit:
+  name: idf_mobility_data
+  displayName: "IDF Mobility Data Platform"
+  description: "Data organization delivering the Île-de-France route-recommendation platform."
+
+# Each squad (Group team) owns one domain and its medallion tables.
+squads:
+  - name: network_schedules_squad
+    displayName: "Network & Schedules Squad"
+    domain: network_schedules
+    owner: thomas.dubois
+  - name: accessibility_squad
+    displayName: "Accessibility Squad"
+    domain: accessibility
+    owner: thomas.dubois
+  - name: reliability_squad
+    displayName: "Service Reliability Squad"
+    domain: service_reliability
+    owner: sophie.martin
+  - name: crowding_squad
+    displayName: "Crowding & Ridership Squad"
+    domain: crowding_ridership
+    owner: sophie.martin
+
+users:
+  - name: marie.leroy
+    displayName: "Marie Leroy"
+    email: marie.leroy@k8sdatalab.com
+    description: "Chief Data Officer — platform-wide accountability and glossary ownership."
+    role: DataOwner
+    teams: [idf_mobility_data]
+  - name: paul.moreau
+    displayName: "Paul Moreau"
+    email: paul.moreau@k8sdatalab.com
+    description: "Data Steward — glossary, classifications and data-quality curation across all domains."
+    role: DataSteward
+    teams: [idf_mobility_data]
+  - name: lucie.bernard
+    displayName: "Lucie Bernard"
+    email: lucie.bernard@k8sdatalab.com
+    description: "Data Engineer — owns ingestion, transformation, profiler and data-quality pipelines."
+    role: DataEngineer
+    teams: [idf_mobility_data]
+  - name: thomas.dubois
+    displayName: "Thomas Dubois"
+    email: thomas.dubois@k8sdatalab.com
+    description: "Domain Data Owner — Network & Schedules and Accessibility."
+    role: DataOwner
+    teams: [network_schedules_squad, accessibility_squad]
+  - name: sophie.martin
+    displayName: "Sophie Martin"
+    email: sophie.martin@k8sdatalab.com
+    description: "Domain Data Owner — Service Reliability and Crowding & Ridership."
+    role: DataOwner
+    teams: [reliability_squad, crowding_squad]
+  - name: julien.robin
+    displayName: "Julien Robin"
+    email: julien.robin@k8sdatalab.com
+    description: "Data Analyst — read and query access to curated data products."
+    role: DataConsumer
+    teams: [idf_mobility_data]
+
+# cross-cutting people referenced during ownership assignment
+steward: paul.moreau
+engineer: lucie.bernard
+glossaryName: IDFMobilite
+glossaryOwner: marie.leroy
