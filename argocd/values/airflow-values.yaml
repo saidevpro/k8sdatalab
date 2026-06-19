@@ -117,16 +117,6 @@ env:
     value: "false"
   - name: FORWARDED_ALLOW_IPS
     value: "*"
-  # - name: AIRFLOW__LOGGING__REMOTE_LOGGING
-  #   value: "True"
-  # - name: AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
-  #   value: "s3://airflow-logs/logs"
-  # - name: AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID
-  #   value: "minio"
-  # - name: AIRFLOW__LOGGING__DELETE_LOCAL_LOGS
-  #   value: "False"
-  # - name: AIRFLOW__LOGGING__ENCRYPT_S3_LOGS
-  #   value: "False"
 
 extraPipPackages:
   - apache-airflow-providers-openlineage

@@ -23,7 +23,8 @@
       "Bash(python3 -c ' *)",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/openmetadata/register.py'\\).read\\(\\)\\); print\\('register.py syntax OK'\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/openmetadata/register.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
-      "Bash(python3 -c \"import yaml; o=yaml.safe_load\\(open\\('src/openmetadata/configs/governance_org.yaml'\\)\\); print\\('policies',len\\(o['policies']\\),'roles',len\\(o['roles']\\),'squads',len\\(o['squads']\\),'users',len\\(o['users']\\)\\)\")"
+      "Bash(python3 -c \"import yaml; o=yaml.safe_load\\(open\\('src/openmetadata/configs/governance_org.yaml'\\)\\); print\\('policies',len\\(o['policies']\\),'roles',len\\(o['roles']\\),'squads',len\\(o['squads']\\),'users',len\\(o['users']\\)\\)\")",
+      "Bash(kubectl get *)"
     ],
     "additionalDirectories": [
       "/workspace/src/spark/jobs/silver/next_stop"

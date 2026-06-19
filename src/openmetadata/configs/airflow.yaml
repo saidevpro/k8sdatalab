@@ -1,0 +1,12 @@
+# Airflow pipeline service: OpenMetadata reads the Airflow metadata database
+# (Postgres backend) to ingest DAGs as pipelines, with tasks and run statuses.
+# The backend password is injected at runtime from AIRFLOW_DB_PASSWORD.
+service:
+  name: airflow
+  hostPort: http://airflow-api-server.data-platform.svc.cluster.local:8080
+  numberOfStatus: 10
+  backend:
+    hostPort: postgresql-data-platform.data-platform.svc.cluster.local:5432
+    username: airflow
+    database: airflow
+schedule: "0 1 * * *"

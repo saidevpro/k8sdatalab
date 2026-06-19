@@ -43,3 +43,42 @@ tierAssignments:
     tag: Tier.Silver
   - schema: Trino.lakehouse.gold
     tag: Tier.Gold
+
+# Asset certification applied to every Trino table, by medallion layer:
+# the certification level reflects the trust/maturity of the data.
+certifications:
+  - schema: bronze
+    tag: Certification.Bronze
+  - schema: silver
+    tag: Certification.Silver
+  - schema: gold
+    tag: Certification.Gold
+
+# Tier appliqué à chaque table Trino (et non plus seulement au schéma), par couche.
+tableTiers:
+  - schema: bronze
+    tag: Tier.Bronze
+  - schema: silver
+    tag: Tier.Silver
+  - schema: gold
+    tag: Tier.Gold
+
+# Data Insights KPIs: platform-wide governance goals tracked over time.
+# Require the Data Insights application to run so coverage data is computed.
+dataInsightKpis:
+  - name: completed_description
+    displayName: "Completed Description"
+    description: "Reach 80% description coverage across data assets by end of 2026."
+    dataInsightChart: percentage_of_data_asset_with_description_kpi
+    metricType: PERCENTAGE
+    targetValue: 80
+    startDate: "2026-01-01"
+    endDate: "2026-12-31"
+  - name: completed_ownership
+    displayName: "Completed Ownership"
+    description: "Reach 90% ownership coverage across data assets by end of 2026."
+    dataInsightChart: percentage_of_data_asset_with_owner_kpi
+    metricType: PERCENTAGE
+    targetValue: 90
+    startDate: "2026-01-01"
+    endDate: "2026-12-31"

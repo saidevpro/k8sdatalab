@@ -1,16 +1,23 @@
 # OpenMetadata Profiler workflow for the medallion lakehouse.
-# Connects to the already-registered Trino service ("lakehouse") and computes
-# column metrics (null %, distinct %, min/max/mean, sample data) for every
-# bronze / silver / gold table. hostPort and jwtToken are injected at runtime
-# from the Airflow Variables OPENMETADATA_HOST_PORT / OPENMETADATA_JWT_TOKEN.
+# Connects to the already-registered Trino service ("Trino") and computes
+# column metrics (null %, distinct %, min/max/mean) for every bronze/silver/gold
+# table. hostPort and jwtToken are injected at runtime.
+#
+# Trino here is resource-constrained, so the profiler is tuned to be gentle:
+#  - threadCount: 1  -> metric queries run sequentially (cascade), never 5 in
+#    parallel (the parallel default crashed Trino workers: 503 PAGE_TRANSPORT_ERROR).
+#  - profileSample: 10% via TABLESAMPLE -> far less data scanned per query.
+#  - timeoutSeconds raised so a slow sampled query is not killed mid-flight.
 source:
   type: trino
   serviceName: Trino
   sourceConfig:
     config:
       type: Profiler
-      generateSampleData: true
-      profileSample: 50
+      threadCount: 1
+      profileSample: 10
+      profileSampleType: PERCENTAGE
+      timeoutSeconds: 10800
       databaseFilterPattern:
         includes:
           - "^lakehouse$"

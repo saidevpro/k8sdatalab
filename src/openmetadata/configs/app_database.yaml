@@ -1,0 +1,33 @@
+# Application PostgreSQL ("itineo") holding user data, consumed by the API.
+# OpenMetadata connects to it (password injected at runtime from APP_DB_PASSWORD),
+# ingests metadata, runs auto-classification (PII detection), and the explicit
+# PII tags below guarantee the known personal-data columns are flagged.
+service:
+  name: itineo_app
+  hostPort: postgresql-app.apps.svc.cluster.local:5432
+  username: admin
+  database: itineo
+  schema: public
+
+piiColumns:
+  - { table: users, column: email, tag: PII.Sensitive }
+  - { table: users, column: password_hash, tag: PII.Sensitive }
+  - { table: users, column: first_name, tag: PII.Sensitive }
+  - { table: users, column: last_name, tag: PII.Sensitive }
+  - { table: users, column: phone, tag: PII.Sensitive }
+  - { table: subscriptions, column: origin_station, tag: PII.NonSensitive }
+  - { table: subscriptions, column: destination_station, tag: PII.NonSensitive }
+
+# Table-level governance: business domain, ownership, criticality tier and tags.
+governance:
+  domain:
+    name: user_subscriptions
+    displayName: "User & Subscriptions"
+    domainType: "Consumer-aligned"
+    description: "Application user accounts, subscriptions and notification history (personal data)."
+  owner: marie.leroy
+  experts: [paul.moreau, marie.leroy]
+  tables:
+    users: { tier: Tier.Tier1, tags: [PII.Sensitive] }
+    subscriptions: { tier: Tier.Tier1, tags: [PII.Sensitive] }
+    notifications: { tier: Tier.Tier2, tags: [PII.Sensitive] }

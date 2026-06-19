@@ -1,0 +1,119 @@
+# Data Contracts on the consumer-facing assets. Each contract binds, for one
+# table: the guaranteed schema, business semantics, the real quality tests that
+# enforce them (qualityExpectations -> existing test cases), an SLA, and an owner.
+# qualityExpectations reference test cases by name (resolved to IDs at runtime).
+contracts:
+  - name: station_accessibility_contract
+    displayName: "Station Accessibility Contract"
+    entity: Trino.lakehouse.gold.station_accessibility
+    owner: thomas.dubois
+    status: Approved
+    description: "Guarantees per-station accessibility data used to enforce the accessible-routing constraint."
+    schema:
+      - { name: accessibility_level_id, dataType: INT }
+      - { name: pct_elevators_available, dataType: DOUBLE }
+      - { name: nb_elevators, dataType: INT }
+      - { name: stop_point_latitude, dataType: DOUBLE }
+      - { name: stop_point_longitude, dataType: DOUBLE }
+    semantics:
+      - { name: accessibility-level-present, description: "Every station exposes an accessibility level.", rule: "accessibility_level_id IS NOT NULL" }
+      - { name: elevator-availability-bounded, description: "Elevator availability is a valid percentage.", rule: "pct_elevators_available BETWEEN 0 AND 100" }
+    qualityExpectations:
+      - station_accessibility_level_not_null
+      - station_accessibility_pct_in_range
+    sla:
+      refreshFrequency: { interval: 1, unit: day }
+      availabilityTime: "06:00 UTC"
+
+  - name: elevators_availability_contract
+    displayName: "Elevator Availability Contract"
+    entity: Trino.lakehouse.gold.elevators_availability
+    owner: thomas.dubois
+    status: Approved
+    description: "Near-real-time elevator availability; an out-of-service elevator must downgrade or exclude a route."
+    schema:
+      - { name: station_area_id, dataType: INT }
+      - { name: nb_elevators, dataType: INT }
+      - { name: nb_available, dataType: INT }
+      - { name: pct_available, dataType: DOUBLE }
+    semantics:
+      - { name: availability-bounded, description: "Availability is a valid percentage.", rule: "pct_available BETWEEN 0 AND 100" }
+      - { name: available-not-exceeding-total, description: "Available elevators never exceed installed elevators.", rule: "nb_available <= nb_elevators" }
+    qualityExpectations:
+      - elevators_pct_available_in_range
+      - elevators_available_not_exceeding_total
+    sla:
+      refreshFrequency: { interval: 1, unit: hour }
+      maxLatency: { value: 2, unit: hour }
+
+  - name: dim_stops_contract
+    displayName: "Stops Dimension Contract"
+    entity: Trino.lakehouse.gold.dim_stops
+    owner: thomas.dubois
+    status: Approved
+    description: "Canonical stops dimension consumed to build candidate routes."
+    schema:
+      - { name: stop_id, dataType: INT }
+      - { name: stop_name, dataType: VARCHAR }
+      - { name: parent_station_id, dataType: INT }
+      - { name: wheelchair_boarding, dataType: INT }
+    semantics:
+      - { name: stop-id-unique, description: "stop_id is a unique, non-null primary key.", rule: "stop_id IS NOT NULL AND is unique" }
+      - { name: wheelchair-domain, description: "wheelchair_boarding uses the GTFS domain {0,1,2}.", rule: "wheelchair_boarding IN (0,1,2)" }
+    qualityExpectations:
+      - dim_stops_stop_id_not_null
+      - dim_stops_stop_id_unique
+      - dim_stops_wheelchair_boarding_in_set
+    sla:
+      refreshFrequency: { interval: 1, unit: day }
+
+  - name: delays_by_stop_contract
+    displayName: "Stop Reliability Contract"
+    entity: Trino.lakehouse.gold.delays_by_stop
+    owner: sophie.martin
+    status: Approved
+    description: "Per-stop on-time aggregates feeding the route reliability score."
+    schema:
+      - { name: stop_point_ref, dataType: VARCHAR }
+      - { name: nb_passages, dataType: BIGINT }
+      - { name: pct_on_time, dataType: DOUBLE }
+      - { name: avg_arrival_delay_sec, dataType: DOUBLE }
+    semantics:
+      - { name: on-time-bounded, description: "On-time rate is a valid percentage.", rule: "pct_on_time BETWEEN 0 AND 100" }
+    qualityExpectations:
+      - delays_by_stop_row_count_positive
+      - delays_by_stop_stop_point_ref_not_null
+    sla:
+      refreshFrequency: { interval: 1, unit: day }
+
+  - name: crowding_features_contract
+    displayName: "Crowding Features Contract"
+    entity: Trino.lakehouse.gold.crowding_features
+    owner: sophie.martin
+    status: Draft
+    description: "Crowding estimates per station from Navigo validations. In Draft: a known data-quality gap on the station key must be fixed before approval."
+    schema:
+      - { name: id_refa_lda, dataType: BIGINT }
+    semantics:
+      - { name: station-key-present, description: "Every crowding row resolves to a station.", rule: "id_refa_lda IS NOT NULL" }
+    qualityExpectations:
+      - crowding_features_row_count_positive
+      - crowding_features_id_refa_lda_not_null
+    sla:
+      refreshFrequency: { interval: 1, unit: day }
+
+  - name: users_contract
+    displayName: "User Accounts Contract"
+    entity: itineo_app.itineo.public.users
+    owner: marie.leroy
+    status: Approved
+    description: "Application user accounts (personal data). Defines the schema, identity rules, freshness and GDPR retention."
+    schema:
+      - { name: id, dataType: INT }
+      - { name: email, dataType: VARCHAR }
+      - { name: created_at, dataType: TIMESTAMPZ }
+    semantics:
+      - { name: email-unique, description: "Email is a unique, non-null account identifier.", rule: "email IS NOT NULL AND is unique" }
+    sla:
+      refreshFrequency: { interval: 1, unit: hour }
+      retention: { period: 36, unit: month }

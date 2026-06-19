@@ -25,6 +25,16 @@ spec:
                 secretKeyRef:
                   name: openmetadata-bot
                   key: jwt-token
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-app-db
+                  key: password
+            - name: AIRFLOW_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-db
+                  key: password
           volumeMounts:
             - name: script
               mountPath: /app/register.py
