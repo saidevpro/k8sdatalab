@@ -1076,6 +1076,181 @@ Resources:
         Arn: !Ref ValidationsStateMachine
         RoleArn: !GetAtt SchedulerRole.Arn
 
+  # =========================================================================
+  # GOLD DATA API  (API Gateway HTTP API + Lambda + Athena)
+  # Route: GET /gold/{table}?limit=<n>   (default 100, max 1000)
+  # =========================================================================
+  AthenaResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${Prefix}-athena-results-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt WarehouseKey.Arn
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-results
+            Status: Enabled
+            ExpirationInDays: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  GoldApiLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Prefix}-gold-api-lambda-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: athena-gold-query
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - athena:StartQueryExecution
+                  - athena:GetQueryExecution
+                  - athena:GetQueryResults
+                  - athena:StopQueryExecution
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetTable
+                  - glue:GetTables
+                  - glue:GetPartition
+                  - glue:GetPartitions
+                  - glue:BatchGetPartition
+                Resource:
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:catalog"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:database/gold"
+                  - !Sub "arn:aws:glue:${AWS::Region}:${AWS::AccountId}:table/gold/*"
+              - Effect: Allow
+                Action: [s3:GetObject, s3:ListBucket, s3:GetBucketLocation]
+                Resource:
+                  - !GetAtt WarehouseBucket.Arn
+                  - !Sub "${WarehouseBucket.Arn}/*"
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:GetBucketLocation, s3:ListBucket]
+                Resource:
+                  - !GetAtt AthenaResultsBucket.Arn
+                  - !Sub "${AthenaResultsBucket.Arn}/*"
+              - Effect: Allow
+                Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+                Resource: !GetAtt WarehouseKey.Arn
+
+  GoldApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${Prefix}-gold-api"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt GoldApiLambdaRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          RESULTS_BUCKET: !Ref AthenaResultsBucket
+          MAX_LIMIT: "1000"
+      Code:
+        ZipFile: |
+          import json, os, time
+          import boto3
+          TABLES = {
+              "crowding_features","delays_by_stop","dim_stops",
+              "disruptions_active","disruptions_by_line","elevators_availability",
+              "elevators_downtime","next_stop_delays","next_stop_features",
+              "next_stop_schedule","service_calendar","station_accessibility",
+              "transfer_walking","trip_schedule","validations_by_category",
+              "validations_daily_by_stop",
+          }
+          athena = boto3.client("athena")
+          def handler(event, ctx):
+              table = (event.get("pathParameters") or {}).get("table", "")
+              if table not in TABLES:
+                  return {"statusCode": 404, "body": json.dumps({"error": f"unknown: {table}"})}
+              qs = event.get("queryStringParameters") or {}
+              try:
+                  limit = min(int(qs.get("limit", "100")), int(os.environ["MAX_LIMIT"]))
+              except ValueError:
+                  return {"statusCode": 400, "body": json.dumps({"error": "invalid limit"})}
+              qid = athena.start_query_execution(
+                  QueryString=f"SELECT * FROM gold.{table} LIMIT {limit}",
+                  QueryExecutionContext={"Database": "gold", "Catalog": "AwsDataCatalog"},
+                  ResultConfiguration={"OutputLocation": f"s3://{os.environ['RESULTS_BUCKET']}/q/"},
+              )["QueryExecutionId"]
+              for _ in range(25):
+                  time.sleep(1)
+                  s = athena.get_query_execution(QueryExecutionId=qid)["QueryExecution"]["Status"]
+                  if s["State"] == "SUCCEEDED":
+                      break
+                  if s["State"] in ("FAILED", "CANCELLED"):
+                      return {"statusCode": 500, "body": json.dumps({"error": s.get("StateChangeReason")})}
+              else:
+                  return {"statusCode": 504, "body": json.dumps({"error": "timeout"})}
+              rows, headers = [], None
+              for page in athena.get_paginator("get_query_results").paginate(QueryExecutionId=qid):
+                  rs = page["ResultSet"]["Rows"]
+                  if headers is None:
+                      headers = [c["VarCharValue"] for c in rs[0]["Data"]]
+                      rs = rs[1:]
+                  for r in rs:
+                      rows.append({headers[i]: c.get("VarCharValue") for i, c in enumerate(r["Data"])})
+              return {
+                  "statusCode": 200,
+                  "headers": {"Content-Type": "application/json"},
+                  "body": json.dumps({"table": table, "count": len(rows), "rows": rows}),
+              }
+
+  GoldApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${Prefix}-gold-api"
+      ProtocolType: HTTP
+      Description: "Read-only access to gold Iceberg tables via Athena."
+
+  GoldApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GoldApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt GoldApiFunction.Arn
+      PayloadFormatVersion: "2.0"
+
+  GoldApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GoldApi
+      RouteKey: "GET /gold/{table}"
+      Target: !Sub "integrations/${GoldApiIntegration}"
+
+  GoldApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref GoldApi
+      StageName: "$default"
+      AutoDeploy: true
+
+  GoldApiLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GoldApiFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoldApi}/*/*/gold/*"
+
 Outputs:
   EcrRepositoryUri:
     Description: Push the aws-spark-emr image here, then redeploy with SparkImageUri.
@@ -1093,3 +1268,6 @@ Outputs:
   EmrApplicationId:
     Condition: HasImage
     Value: !Ref SparkApplication
+  GoldApiUrl:
+    Description: "Gold Data API base URL. Usage: GET {url}/gold/{table}?limit=100"
+    Value: !Sub "https://${GoldApi}.execute-api.${AWS::Region}.amazonaws.com"
