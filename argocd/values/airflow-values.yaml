@@ -64,13 +64,7 @@ triggerer:
     size: 5Gi
 
 data:
-  metadataConnection:
-    user: airflow
-    pass: "YJ$fF1&ndM"
-    host: postgresql-data-platform.data-platform.svc.cluster.local
-    port: 5432
-    db: airflow
-    protocol: postgresql
+  metadataSecretName: airflow-metadata-connection
 
 postgresql:
   enabled: false
