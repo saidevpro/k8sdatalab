@@ -19,7 +19,7 @@ backendStore:
     user: mlflow
   existingDatabaseSecret:
     name: mlflow-postgres-secret
-    usernameKey: user
+    usernameKey: username
     passwordKey: password
 
 artifactRoot:
