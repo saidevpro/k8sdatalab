@@ -3,8 +3,6 @@ hub:
     JupyterHub:
       admin_access: true
       authenticator_class: dummy
-    DummyAuthenticator:
-      password: "kWw9o06sb4kC"
     Authenticator:
       admin_users:
         - admin
@@ -13,11 +11,32 @@ hub:
         - dev
         - said
         - abdoulaye
+  extraEnv:
+    - name: CONFIGPROXY_AUTH_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: jupyterhub-secrets
+          key: proxy-token
+    - name: DUMMY_AUTH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: jupyterhub-secrets
+          key: auth-password
+  extraConfig:
+    dummy-auth-password: |
+      import os
+      c.DummyAuthenticator.password = os.environ["DUMMY_AUTH_PASSWORD"]
 
 proxy:
   service:
     type: ClusterIP
-  secretToken: "442e402846ab4fa51abb464be831920e9cdde19f21db2515cb8600741fdee23f"
+  chp:
+    extraEnv:
+      - name: CONFIGPROXY_AUTH_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: jupyterhub-secrets
+            key: proxy-token
 
 singleuser:
   networkPolicy:
