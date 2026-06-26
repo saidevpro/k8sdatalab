@@ -5,15 +5,4 @@ minkms:
     tag:  RELEASE.2025-11-12T19-14-51Z
     pullPolicy: IfNotPresent
   configuration:
-    existingSecret: false
-    hsm:
-      hashicorp:
-        vault:
-          server: http://vault.vault.svc.cluster.local:8200
-          transit:
-            key: minkms-sealing-key
-            path: transit/
-          approle:
-            path: approle
-            id: "192a7a9b-6476-6fd9-0c88-195207a44824"
-            secret: "8ed8e96a-e8d7-d330-f797-a61d1a9cce38"
+    existingSecret: true
