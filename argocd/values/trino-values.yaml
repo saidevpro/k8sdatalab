@@ -5,7 +5,7 @@ server:
 
 additionalConfigProperties:
   - http-server.process-forwarded=true
-  - internal-communication.shared-secret=v6PJuMVdoV/gVRKpXCsUeDbYj4dJrzrQC8fVZK/kuA8=
+  - internal-communication.shared-secret=${ENV:TRINO_SHARED_SECRET}
   - http-server.authentication.allow-insecure-over-http=true
   - query.max-memory-per-node=2GB
   - memory.heap-headroom-per-node=512MB
@@ -84,6 +84,11 @@ catalogs:
     s3.region=us-east-1
 
 env:
+  - name: TRINO_SHARED_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: trino-internal-secret
+        key: shared-secret
   - name: MINIO_ACCESS_KEY
     valueFrom:
       secretKeyRef:
