@@ -17,7 +17,10 @@ backendStore:
     port: 5432
     database: mlflow
     user: mlflow
-    password: tTmQsWZAQJ6ova6fQk3LVUQmBwtVzxn
+  existingDatabaseSecret:
+    name: mlflow-postgres-secret
+    usernameKey: user
+    passwordKey: password
 
 artifactRoot:
   s3:
@@ -42,7 +45,9 @@ auth:
     port: 5432
     database: mlflow
     user: mlflow
-    password: tTmQsWZAQJ6ova6fQk3LVUQmBwtVzxn
+    existingSecret:
+      name: mlflow-postgres-secret
+      passwordKey: password
 
 extraEnvVars:
   MLFLOW_S3_ENDPOINT_URL: "http://minio.data-platform.svc.cluster.local:9000"
