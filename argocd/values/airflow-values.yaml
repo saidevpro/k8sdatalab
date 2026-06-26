@@ -90,13 +90,19 @@ dags:
 createUserJob:
   enabled: false
   useHelmHooks: false
+  env:
+    - name: AIRFLOW_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: airflow-admin-secret
+          key: password
   defaultUser:
     role: Admin
     username: said
     email: saidevproject@gmail.com
     firstName: said
     lastName: dev
-    password: "Gfz#Klu8n9VC4c7T92D"
+    password: "$(AIRFLOW_ADMIN_PASSWORD)"
 
 migrateDatabaseJob:
   enabled: false
