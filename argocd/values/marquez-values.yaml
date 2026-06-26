@@ -1,12 +1,12 @@
 replicaCount: 1
 
 marquez:
+  existingSecretName: marquez-secret
   db:
     host: postgresql-data-platform.data-platform.svc.cluster.local
     port: 5432
     name: marquez
     user: marquez
-    password: 2j28gK5BL28d
   resources:
     requests:
       memory: 512Mi
