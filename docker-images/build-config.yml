@@ -54,7 +54,7 @@ images:
     depends_on:
       - src/kafka
 
-  - image: iteno
+  - image: itineo
     version: 0.1.0
     depends_on:
       - src/itineo

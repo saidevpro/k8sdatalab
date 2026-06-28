@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: itineo
+  namespace: apps
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`itineo.k8sdatalab.com`)
+      kind: Rule
+      services:
+        - name: itineo
+          port: 8000
+  tls:
+    secretName: wildcard-tls
