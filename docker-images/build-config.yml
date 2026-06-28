@@ -54,10 +54,10 @@ images:
     depends_on:
       - src/kafka
 
-  - image: app
+  - image: iteno
     version: 0.1.0
     depends_on:
-      - src/app
+      - src/itineo
 
   - image: mlflow
     version: 3.7.0
