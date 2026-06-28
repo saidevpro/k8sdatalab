@@ -4,10 +4,10 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /srv
 
-COPY src/app/requirements.txt .
+COPY src/itineo/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/app /srv/app
+COPY src/itineo /srv/itineo
 
 EXPOSE 8000
 
