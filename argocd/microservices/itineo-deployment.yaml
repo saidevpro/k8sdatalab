@@ -19,6 +19,53 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-secret
+                  key: SECRET_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-secret
+                  key: JWT_SECRET_KEY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-secret
+                  key: DATABASE_URL
+            - name: TRINO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-secret
+                  key: TRINO_PASSWORD
+            - name: SWAGGER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-secret
+                  key: SWAGGER_USER
+            - name: SWAGGER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itineo-secret
+                  key: SWAGGER_PASSWORD
+            - name: TRINO_HOST
+              value: "trino.data-platform.svc.cluster.local"
+            - name: TRINO_PORT
+              value: "8080"
+            - name: TRINO_USER
+              value: "admin"
+            - name: TRINO_HTTP_SCHEME
+              value: "http"
+            - name: TRINO_CATALOG
+              value: "dev"
+            - name: GOLD_SCHEMA
+              value: "gold"
+            - name: SILVER_SCHEMA
+              value: "silver"
+            - name: ENABLE_SCHEDULER
+              value: "true"
 ---
 apiVersion: v1
 kind: Service
