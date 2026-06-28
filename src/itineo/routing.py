@@ -12,7 +12,17 @@ def build_candidates(origin_ids, dest_ids, max_transfers, accessible_required, d
     if max_transfers >= 1:
         candidates += gold.transfer_routes(origin_ids, dest_ids, limit, dep_from, dep_to)
 
-    return [c for c in candidates if _is_allowed(c, max_transfers, accessible_required)]
+    allowed = [c for c in candidates if _is_allowed(c, max_transfers, accessible_required)]
+    return _dedup(allowed)
+
+
+def _dedup(candidates):
+    seen = {}
+    for c in candidates:
+        key = (c["board_stop_id"], c["alight_stop_id"], tuple(c["lines"]))
+        if key not in seen or c["duration_sec"] < seen[key]["duration_sec"]:
+            seen[key] = c
+    return list(seen.values())
 
 
 def _is_allowed(candidate, max_transfers, accessible_required):

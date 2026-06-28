@@ -24,7 +24,10 @@
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/openmetadata/register.py'\\).read\\(\\)\\); print\\('register.py syntax OK'\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('src/openmetadata/register.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
       "Bash(python3 -c \"import yaml; o=yaml.safe_load\\(open\\('src/openmetadata/configs/governance_org.yaml'\\)\\); print\\('policies',len\\(o['policies']\\),'roles',len\\(o['roles']\\),'squads',len\\(o['squads']\\),'users',len\\(o['users']\\)\\)\")",
-      "Bash(kubectl get *)"
+      "Bash(kubectl get *)",
+      "Bash(curl -s https://itineo.k8sdatalab.com/health)",
+      "Bash(curl -s -X POST https://itineo.k8sdatalab.com/search -H 'Content-Type: application/json' -d '{\"origin\": {\"address\": \"29 rue de Rivoli, Paris\"}, \"destination\": {\"station\": \"La Défense\"}, \"time\": \"08:30\"}')",
+      "Bash(python3 -m json.tool)"
     ],
     "additionalDirectories": [
       "/workspace/src/spark/jobs/silver/next_stop"

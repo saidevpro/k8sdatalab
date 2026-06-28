@@ -49,6 +49,12 @@ def rank_routes(candidates, params, service_date):
     if not kept:
         return []
 
+    known_crowding = [c["crowding_est"] for c in kept if c["crowding_est"] is not None]
+    crowding_fill = sum(known_crowding) / len(known_crowding) if known_crowding else 0.0
+    for c in kept:
+        if c["crowding_est"] is None:
+            c["crowding_est"] = crowding_fill
+
     weights = _weights(params)
     dur = _normalize([c["duration_sec"] for c in kept], lower_is_better=True)
     rel = _normalize([c["reliability_pct"] for c in kept], lower_is_better=False)
@@ -78,4 +84,5 @@ def _avg(values, default):
 
 
 def _sum(values):
-    return sum(v for v in values if v is not None)
+    valid = [v for v in values if v is not None]
+    return sum(valid) if valid else None
