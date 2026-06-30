@@ -69,7 +69,11 @@ def nearest_stops(lat, lon, limit, max_distance_m):
     )
     stops = [{"stop_id": int(r[0]), "stop_name": r[1], "distance_m": float(r[2])} for r in rows]
     within = [s for s in stops if s["distance_m"] <= max_distance_m]
-    return within or stops[:1]
+    if within:
+        return within
+    if stops and stops[0]["distance_m"] <= 5000:
+        return stops[:1]
+    raise ValueError("no transit stops found near this location")
 
 
 def direct_routes(origin_ids, dest_ids, limit, dep_from, dep_to):

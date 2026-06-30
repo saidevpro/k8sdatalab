@@ -23,12 +23,27 @@ class SearchParams:
 def resolve_location(loc):
     if loc.get("station"):
         ids, name = gold.resolve_station(loc["station"])
+        if not ids:
+            raise ValueError(f"station not found: {loc['station']}")
         return ids, {}, name
 
     if loc.get("lat") is not None and loc.get("lon") is not None:
         lat, lon, label = float(loc["lat"]), float(loc["lon"]), loc.get("label", "point")
     elif loc.get("address"):
-        lat, lon, label = geocoding.geocode(loc["address"])
+        try:
+            lat, lon, label = geocoding.geocode(loc["address"])
+        except ValueError:
+            candidates_names = [loc["address"]]
+            if "," in loc["address"]:
+                candidates_names.append(loc["address"].split(",")[0].strip())
+            for name_try in candidates_names:
+                try:
+                    ids, name = gold.resolve_station(name_try)
+                    if ids:
+                        return ids, {}, name
+                except Exception:
+                    pass
+            raise ValueError(f"address not found: {loc['address']}")
     else:
         raise ValueError("location requires 'station', 'address', or 'lat'+'lon'")
 
@@ -102,7 +117,7 @@ def _format(candidate, rank):
         "transfers": candidate["transfers"],
         "board_stop": candidate["board_stop"],
         "alight_stop": candidate["alight_stop"],
-        "transfer_stations": candidate["transfer_stations"],
+        "transfer_stations": list(dict.fromkeys(candidate["transfer_stations"])),
         "duration_min": round(candidate["duration_sec"] / 60, 1),
         "walking_m": round(candidate["walking_m"], 1),
         "reliability_pct": round(candidate["reliability_pct"], 1),

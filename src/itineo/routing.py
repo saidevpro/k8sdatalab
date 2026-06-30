@@ -13,7 +13,8 @@ def build_candidates(origin_ids, dest_ids, max_transfers, accessible_required, d
         candidates += gold.transfer_routes(origin_ids, dest_ids, limit, dep_from, dep_to)
 
     allowed = [c for c in candidates if _is_allowed(c, max_transfers, accessible_required)]
-    return _dedup(allowed)
+    valid = [c for c in allowed if c["duration_sec"] >= 60]
+    return _dedup(valid)
 
 
 def _dedup(candidates):
