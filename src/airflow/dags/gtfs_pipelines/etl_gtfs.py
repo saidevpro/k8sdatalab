@@ -93,6 +93,11 @@ GOLD_JOBS = {
         "conf": "spark-medium",
         "conn_id": "spark_local"
     },
+    "station_lines": {
+        "app": "gold/gtfs/station_lines.py",
+        "conf": "spark-medium",
+        "conn_id": "spark_local"
+    },
 }
 
 
@@ -142,9 +147,10 @@ with DAG(
             )
 
     with TaskGroup(group_id="gold_tasks") as gold_task_group:
+        gold_tasks = {}
         for job, settings in GOLD_JOBS.items():
             job_domain = f"{dag_domain}_{job}"
-            SparkSubmitOperator(
+            gold_tasks[job] = SparkSubmitOperator(
                 task_id=h.format_etl_gold_dag_task_id(job_domain),
                 name=h.format_etl_gold_dag_task_name(job_domain),
                 conn_id=settings["conn_id"],
@@ -159,5 +165,7 @@ with DAG(
                 trigger_rule=TriggerRule.ALL_DONE,
                 verbose=True,
             )
+
+        [gold_tasks["dim_stops"], gold_tasks["trip_schedule"]] >> gold_tasks["station_lines"]
 
     bronze_task >> silver_task_group >> gold_task_group

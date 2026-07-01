@@ -5,11 +5,14 @@ from pyspark.sql import functions as F
 
 
 catalog_name = os.getenv("ICEBERG_CATALOG_NAME", "nessie")
-SILVER_NAMESPACE = os.getenv("SILVER_NAMESPACE", "silver")
 GOLD_NAMESPACE = os.getenv("GOLD_NAMESPACE", "gold")
 
-ACCESSIBILITY_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.accessibility_gares"
+DIM_STOPS_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.dim_stops"
 AVAILABILITY_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.elevators_availability"
+RELIABILITY_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.elevators_reliability"
+STATION_LINES_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.station_lines"
+DISRUPTIONS_BY_LINE_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.disruptions_by_line"
+CROWDING_FEATURES_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.crowding_features"
 
 STATION_ACCESSIBILITY_TABLE = (
     f"{catalog_name}.{GOLD_NAMESPACE}.station_accessibility"
@@ -17,18 +20,14 @@ STATION_ACCESSIBILITY_TABLE = (
 
 
 def ensure_namespace(spark: SparkSession) -> None:
-    # nessie_ref = spark.conf.get(f"spark.sql.catalog.{catalog_name}.ref")
-    # spark.sql(
-        # f"CREATE BRANCH IF NOT EXISTS {nessie_ref} IN {catalog_name} FROM main"
-    # )
     spark.sql(
         f"CREATE NAMESPACE IF NOT EXISTS {catalog_name}.{GOLD_NAMESPACE}"
     )
 
 
 def build_station_accessibility(spark: SparkSession):
-    accessibility = spark.read.table(ACCESSIBILITY_TABLE).withColumn(
-        "station_key", F.upper(F.trim(F.col("stop_name")))
+    dim_stops = spark.read.table(DIM_STOPS_TABLE).withColumn(
+        "station_key", F.upper(F.trim(F.col("parent_station_name")))
     )
 
     availability = (
@@ -45,26 +44,77 @@ def build_station_accessibility(spark: SparkSession):
         )
     )
 
+    reliability = (
+        spark.read.table(RELIABILITY_TABLE)
+        .withColumn("station_key", F.upper(F.trim(F.col("station_name"))))
+        .groupBy("station_key")
+        .agg(
+            F.sum("nb_outages_30d").alias("nb_outages_30d"),
+            F.round(F.avg("pct_uptime_30d"), 1).alias("pct_uptime_30d"),
+        )
+    )
+
+    station_lines = spark.read.table(STATION_LINES_TABLE).select(
+        "stop_id", "route_id", "route_short_name", "route_type"
+    )
+
+    lines_summary = station_lines.groupBy("stop_id").agg(
+        F.collect_set("route_short_name").alias("lines_served"),
+        F.collect_set("route_type").alias("modes_served"),
+        F.countDistinct("route_id").alias("nb_lines_served"),
+    )
+
+    disruptions_today = (
+        spark.read.table(DISRUPTIONS_BY_LINE_TABLE)
+        .where(F.col("day") == F.current_date())
+        .groupBy("line_id")
+        .agg(F.sum("nb_disruptions").alias("nb_disruptions"))
+    )
+
+    disruptions_by_stop = (
+        station_lines.alias("l")
+        .join(disruptions_today.alias("d"), F.col("l.route_id") == F.col("d.line_id"), "inner")
+        .groupBy("stop_id")
+        .agg(F.sum("nb_disruptions").alias("nb_active_disruptions_today"))
+    )
+
+    crowding = (
+        spark.read.table(CROWDING_FEATURES_TABLE)
+        .where(F.col("jour") >= F.date_sub(F.current_date(), 30))
+        .groupBy("id_refa_lda")
+        .agg(
+            F.round(F.avg("daily_total_validations"), 0).alias("avg_daily_validations_30d"),
+            F.round(F.max("pct_validations"), 1).alias("peak_hour_pct_validations"),
+        )
+    )
+
     return (
-        accessibility.join(availability, "station_key", "left")
+        dim_stops.alias("d")
+        .join(availability.alias("a"), "station_key", "left")
+        .join(reliability.alias("r"), "station_key", "left")
+        .join(lines_summary.alias("l"), F.col("d.stop_id") == F.col("l.stop_id"), "left")
+        .join(disruptions_by_stop.alias("dis"), F.col("d.stop_id") == F.col("dis.stop_id"), "left")
+        .join(crowding.alias("c"), F.col("d.parent_station_id") == F.col("c.id_refa_lda"), "left")
         .select(
-            F.col("stop_point_id"),
-            F.col("stop_name"),
-            F.col("accessibility_level_id"),
-            F.col("stop_point_latitude"),
-            F.col("stop_point_longitude"),
-            F.when(
-                F.col("stop_point_longitude").isNotNull()
-                & F.col("stop_point_latitude").isNotNull(),
-                F.concat(
-                    F.lit("POINT ("), F.col("stop_point_longitude").cast("string"),
-                    F.lit(" "), F.col("stop_point_latitude").cast("string"), F.lit(")"),
-                ),
-            ).alias("geo_point"),
-            F.col("nb_elevators"),
-            F.col("nb_available"),
-            F.col("pct_elevators_available"),
-            F.col("nb_elevators").isNotNull().alias("has_elevator_data"),
+            F.col("d.stop_id"),
+            F.col("d.stop_name"),
+            F.col("d.parent_station_id"),
+            F.col("d.parent_station_name"),
+            F.col("d.stop_geo_point"),
+            F.col("d.accessibility_level_id"),
+            F.col("d.wheelchair_boarding"),
+            F.col("a.nb_elevators"),
+            F.col("a.nb_available"),
+            F.col("a.pct_elevators_available"),
+            F.col("a.nb_elevators").isNotNull().alias("has_elevator_data"),
+            F.col("r.nb_outages_30d"),
+            F.col("r.pct_uptime_30d"),
+            F.coalesce(F.col("l.lines_served"), F.array()).alias("lines_served"),
+            F.coalesce(F.col("l.modes_served"), F.array()).alias("modes_served"),
+            F.coalesce(F.col("l.nb_lines_served"), F.lit(0)).alias("nb_lines_served"),
+            F.coalesce(F.col("dis.nb_active_disruptions_today"), F.lit(0)).alias("nb_active_disruptions_today"),
+            F.col("c.avg_daily_validations_30d"),
+            F.col("c.peak_hour_pct_validations"),
         )
     )
 

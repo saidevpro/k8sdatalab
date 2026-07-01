@@ -14,6 +14,7 @@ HISTORY_TABLE = f"{catalog_name}.{SILVER_NAMESPACE}.elevators_history"
 
 AVAILABILITY_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.elevators_availability"
 DOWNTIME_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.elevators_downtime"
+RELIABILITY_TABLE = f"{catalog_name}.{GOLD_NAMESPACE}.elevators_reliability"
 
 
 def ensure_namespace(spark: SparkSession) -> None:
@@ -83,6 +84,54 @@ def build_downtime(spark: SparkSession):
     )
 
 
+def build_reliability(spark: SparkSession, downtime):
+    now = F.current_timestamp()
+
+    outages = downtime.withColumn(
+        "downtime_minutes",
+        (F.coalesce(F.col("ended_at"), now).cast("long") - F.col("status_updated_at").cast("long")) / 60,
+    )
+
+    elevator_counts = (
+        spark.read.table(CURRENT_TABLE)
+        .where(F.col("is_active") == True)
+        .groupBy("station_area_id", "station_name", "transport_mode")
+        .agg(F.count("*").alias("nb_elevators"))
+    )
+
+    def window_metrics(since_days, suffix):
+        since = F.date_sub(F.current_date(), since_days)
+        return (
+            outages.where(F.col("status_updated_at") >= since)
+            .groupBy("station_area_id", "station_name", "transport_mode")
+            .agg(
+                F.count("*").alias(f"nb_outages_{suffix}"),
+                F.round(F.sum("downtime_minutes"), 1).alias(f"downtime_minutes_{suffix}"),
+                F.round(F.avg("downtime_minutes"), 1).alias(f"avg_outage_minutes_{suffix}"),
+            )
+        )
+
+    metrics_30d = window_metrics(30, "30d")
+    metrics_90d = window_metrics(90, "90d")
+
+    return (
+        elevator_counts.join(metrics_30d, ["station_area_id", "station_name", "transport_mode"], "left")
+        .join(metrics_90d, ["station_area_id", "station_name", "transport_mode"], "left")
+        .withColumn("nb_outages_30d", F.coalesce(F.col("nb_outages_30d"), F.lit(0)))
+        .withColumn("downtime_minutes_30d", F.coalesce(F.col("downtime_minutes_30d"), F.lit(0.0)))
+        .withColumn("nb_outages_90d", F.coalesce(F.col("nb_outages_90d"), F.lit(0)))
+        .withColumn("downtime_minutes_90d", F.coalesce(F.col("downtime_minutes_90d"), F.lit(0.0)))
+        .withColumn(
+            "pct_uptime_30d",
+            F.round(100 * (F.lit(1) - F.least(F.col("downtime_minutes_30d") / (F.col("nb_elevators") * 30 * 1440), F.lit(1.0))), 1),
+        )
+        .withColumn(
+            "pct_uptime_90d",
+            F.round(100 * (F.lit(1) - F.least(F.col("downtime_minutes_90d") / (F.col("nb_elevators") * 90 * 1440), F.lit(1.0))), 1),
+        )
+    )
+
+
 def main() -> None:
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
@@ -91,13 +140,17 @@ def main() -> None:
 
     build_availability(spark).writeTo(AVAILABILITY_TABLE).using("iceberg").createOrReplace()
 
+    downtime = build_downtime(spark)
+
     (
-        build_downtime(spark)
+        downtime
         .writeTo(DOWNTIME_TABLE)
         .using("iceberg")
         .partitionedBy(F.months("status_updated_at"))
         .createOrReplace()
     )
+
+    build_reliability(spark, downtime).writeTo(RELIABILITY_TABLE).using("iceberg").createOrReplace()
 
     print("gold elevators tables refreshed")
 
