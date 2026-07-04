@@ -2,17 +2,14 @@ mysql:
   enabled: true
   fullnameOverride: "openmetadata-mysql"
   auth:
-    rootPassword: 6LePUIySS8D4
+    existingSecret: openmetadata-mysql-credentials
+    secretKeys:
+      adminPasswordKey: mysql-root-password
   primary:
     persistence:
       storageClass: longhorn
       size: 4Gi
-  initdbScripts:
-    init_openmetadata_db_scripts.sql: |
-      CREATE DATABASE openmetadata_db;
-      CREATE USER 'openmetadata'@'%' IDENTIFIED BY '2vQ3M9Uam0d6';
-      GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata'@'%' WITH GRANT OPTION;
-      commit;
+    initdbScriptsSecret: openmetadata-mysql-initdb
 
 opensearch:
   enabled: false
