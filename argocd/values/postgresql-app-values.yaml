@@ -1,18 +1,11 @@
 auth:
-  postgresPassword: "ve1l9ZfLfQ4elTjd7uEez"
+  existingSecret: postgresql-app-credentials
+  secretKeys:
+    adminPasswordKey: postgres-password
 
 primary:
   initdb:
-    scripts:
-      init.sql: |
-        -- Create users
-        CREATE USER admin WITH PASSWORD 'cliZ9l85$mJcH';
-
-        -- Create database
-        CREATE DATABASE itineo OWNER admin;
-
-        -- Config priviledge
-        GRANT ALL PRIVILEGES ON DATABASE itineo TO admin;
+    scriptsSecret: postgresql-app-init-scripts
   resources:
     requests:
       memory: 256Mi
