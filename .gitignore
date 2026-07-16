@@ -2,6 +2,7 @@
 .ansible
 kubeconfig.yaml
 server
+.claude
 .venv
 .manifests
 .keys
