@@ -8,8 +8,8 @@ SWAGGER_TEMPLATE = {
     "swagger": "2.0",
     "info": {
         "title": "IDFM Route Notification API",
-        "description": "Subscriptions and daily best-route SMS notifications.",
-        "version": "1.0.0",
+        "description": "Mobility analytics, accessible route search and daily best-route notifications.",
+        "version": "1.2.0",
     },
     "securityDefinitions": {
         "Bearer": {
@@ -45,12 +45,14 @@ def create_app(config_class=Config):
             )
         return None
 
-    from . import auth, notifications, search, subscriptions
+    from . import accessibility, analytics, auth, notifications, search, subscriptions
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(subscriptions.bp)
     app.register_blueprint(notifications.bp)
     app.register_blueprint(search.bp)
+    app.register_blueprint(accessibility.bp)
+    app.register_blueprint(analytics.bp)
 
     @app.get("/health")
     def health():
