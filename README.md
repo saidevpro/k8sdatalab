@@ -22,6 +22,7 @@ running at minimal cost.
 - [Streaming pipelines](#streaming-pipelines)
 - [Machine learning](#machine-learning)
 - [Itineo — the application](#itineo--the-application)
+- [Itineo API](#itineo-api)
 - [Data governance & observability](#data-governance--observability)
 - [Infrastructure & GitOps](#infrastructure--gitops)
 - [Secrets management](#secrets-management)
@@ -77,7 +78,7 @@ flowchart LR
     subgraph Lakehouse["Lakehouse - MinIO + Iceberg + Nessie"]
         C1[(bronze<br/>17 tables)]
         C2[(silver<br/>21 tables)]
-        C3[(gold<br/>16 tables)]
+        C3[(gold<br/>19 tables)]
     end
 
     subgraph Serving
@@ -182,7 +183,7 @@ managed by Nessie, organised into three layers:
 |---|---|---|
 | **bronze** | 17 | Raw ingestion, schema-on-write, append-only. GTFS files, PRIM snapshots, validation datasets. |
 | **silver** | 21 | Cleaned, typed, deduplicated, conformed entities: `stop_points`, `stop_areas`, `stop_times`, `trips`, `transfers`, `pathways`, `elevators_current` / `elevators_history`, `disruption_*`, `validations_daily`… |
-| **gold** | 16 | Business-ready aggregates consumed by the app and ML: `trip_schedule`, `transfer_walking`, `station_accessibility`, `elevators_availability` / `elevators_downtime`, `crowding_features`, `next_stop_features`, `delays_by_stop`, `disruptions_active`… |
+| **gold** | 19 | Business-ready aggregates consumed by the app, dashboards and ML: GTFS schedules/network, accessibility, elevator availability/reliability, validations/crowding, delays and disruptions. |
 
 **Nessie branching** is used as a safety mechanism: pipelines write to the `dev`
 branch, and a dedicated DAG merges `dev` into `main` once results are validated —
@@ -264,6 +265,8 @@ A Flask service (`src/itineo/`) that turns the gold layer into a product.
 | `auth.py` / `subscriptions.py` | JWT authentication, subscription CRUD |
 | `geocoding.py` | address → stop resolution |
 | `gold.py` | Trino client and gold-layer queries |
+| `accessibility.py` | station, transfer and elevator accessibility API |
+| `analytics.py` | crowding, delays, disruptions and network API |
 | `routing.py` | candidate route generation (direct + one transfer) |
 | `scoring.py` | 5-criteria scoring, top-2 selection |
 | `engine.py` / `recommender.py` | search orchestration |
@@ -281,6 +284,79 @@ score = w_duration    * (shorter trip)
 
 Routes violating a hard accessibility constraint — including a lift currently
 reported out of service — are excluded or downgraded before scoring.
+
+### Itineo API
+
+Itineo now exposes both journey recommendations and read-only mobility analytics
+from the Gold layer. Analytical data is queried through Trino and is not copied
+into PostgreSQL.
+
+- Cluster URL: `https://itineo.k8sdatalab.com`
+- Local URL: `http://localhost:8000`
+- Swagger UI: `/apidocs/` (Basic Auth when `SWAGGER_USER` and
+  `SWAGGER_PASSWORD` are configured)
+- OpenAPI specification: `/apispec_1.json`
+- Health check: `GET /health`
+
+| Domain | Method and endpoint | Description |
+|---|---|---|
+| Journey search | `POST /search` | Rank accessible itineraries from an address, coordinates or station |
+| Accessibility | `GET /accessibility/summary` | Network-wide accessibility indicators |
+| Accessibility | `GET /accessibility/stations` | Search and filter station accessibility |
+| Accessibility | `GET /accessibility/stations/<station_id>` | Details for one parent station |
+| Accessibility | `GET /accessibility/transfers` | Transfer distance, equipment and accessibility |
+| Elevators | `GET /accessibility/elevators` | Current availability by station |
+| Elevators | `GET /accessibility/elevators/reliability` | Outages and uptime over 30/90 days |
+| Elevators | `GET /accessibility/elevators/outages` | Ongoing and historical outage events |
+| Crowding | `GET /crowding/summary` | Validation-based network indicators |
+| Crowding | `GET /crowding/stations` | Stations ranked by estimated validation volume |
+| Crowding | `GET /crowding/timeseries` | Daily validation time series |
+| Crowding | `GET /crowding/ticket-categories` | Validation distribution by ticket category |
+| Delays | `GET /delays/summary` | Passage-weighted punctuality summary |
+| Delays | `GET /delays/lines` | Line punctuality ranking |
+| Delays | `GET /delays/recent` | Recently ingested delayed passages |
+| Disruptions | `GET /disruptions/active` | Active messages, severity and impacted lines |
+| Disruptions | `GET /disruptions/history` | Daily disruption counts by line |
+| Network | `GET /network/lines` | GTFS line catalogue and coverage |
+| Network | `GET /network/lines/<route_id>/stations` | Stations served by one route |
+| Accounts | `POST /auth/signup`, `POST /auth/login` | Registration and JWT creation |
+| Subscriptions | `GET/POST /subscriptions`, `DELETE /subscriptions/<id>` | JWT-protected subscription management |
+| Notifications | `GET /notifications`, `POST /notifications/preview/<id>` | JWT-protected history and preview |
+
+The crowding endpoints expose **estimates based on ticket validations**, not
+real-time passenger occupancy. Dates use `YYYY-MM-DD`. Collection routes return
+at most 500 rows and use the following envelope:
+
+```json
+{
+  "count": 1,
+  "limit": 100,
+  "offset": 0,
+  "items": []
+}
+```
+
+Common filters include `q`, `line`, `date_from`, `date_to`, `limit` and
+`offset`. Domain-specific filters include `accessible`, `available`, `ongoing`,
+`hour`, `cat_jour`, `severity`, `min_delay_sec` and `since_hours`.
+
+```bash
+# Overall accessibility
+curl "http://localhost:8000/accessibility/summary"
+
+# Morning crowding estimates for a normal weekday
+curl "http://localhost:8000/crowding/stations?hour=8&cat_jour=JOHV&limit=20"
+
+# Line punctuality and active disruptions
+curl "http://localhost:8000/delays/summary?line=A"
+curl "http://localhost:8000/disruptions/active?line=IDFM:C01371"
+
+# Elevator outages currently in progress
+curl "http://localhost:8000/accessibility/elevators/outages?ongoing=true&since_days=30"
+```
+
+See [`src/itineo/README.md`](src/itineo/README.md) for request bodies, detailed
+filters, Gold-table mappings and local startup instructions.
 
 ---
 
