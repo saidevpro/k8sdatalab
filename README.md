@@ -319,6 +319,10 @@ into PostgreSQL.
 | Disruptions | `GET /disruptions/history` | Daily disruption counts by line |
 | Network | `GET /network/lines` | GTFS line catalogue and coverage |
 | Network | `GET /network/lines/<route_id>/stations` | Stations served by one route |
+| Privacy | `GET /privacy` | Public privacy notice and available data rights |
+| Privacy | `GET /privacy/me` | JWT-protected portable personal-data export |
+| Privacy | `PATCH /privacy/me` | JWT/password-protected data rectification |
+| Privacy | `DELETE /privacy/me` | JWT/password-protected account erasure |
 | Accounts | `POST /auth/signup`, `POST /auth/login` | Registration and JWT creation |
 | Subscriptions | `GET/POST /subscriptions`, `DELETE /subscriptions/<id>` | JWT-protected subscription management |
 | Notifications | `GET /notifications`, `POST /notifications/preview/<id>` | JWT-protected history and preview |
@@ -354,6 +358,17 @@ curl "http://localhost:8000/disruptions/active?line=IDFM:C01371"
 # Elevator outages currently in progress
 curl "http://localhost:8000/accessibility/elevators/outages?ongoing=true&since_days=30"
 ```
+
+The privacy API supports access/portability, rectification and erasure of the
+personal data stored by the application. Configure a real, monitored
+`PRIVACY_CONTACT_EMAIL` before deployment; `GET /privacy` reports a configuration
+warning while it is missing. Deleting an account also deletes its subscriptions
+and notification history and invalidates JWTs whose user no longer exists.
+
+These technical controls support GDPR data-subject rights but are not a complete
+legal-compliance programme. The deployment owner remains responsible for the
+processing register, retention and backup policies, processor agreements,
+security controls, breach procedures and non-API requests.
 
 See [`src/itineo/README.md`](src/itineo/README.md) for request bodies, detailed
 filters, Gold-table mappings and local startup instructions.

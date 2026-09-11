@@ -22,6 +22,7 @@ distance, and accessibility constraints.
 | `gold.py` | Trino client + gold queries |
 | `accessibility.py` | public read-only Gold accessibility endpoints |
 | `analytics.py` | public crowding, delay, disruption and network endpoints |
+| `privacy.py` | privacy notice, personal-data export, rectification and erasure |
 | `routing.py` | candidate routes (direct + 1 transfer) from gold |
 | `scoring.py` | 5-criteria score, top-2 selection |
 | `recommender.py` | orchestration for one subscription |
@@ -68,6 +69,10 @@ service (real-time `elevators_availability`), are excluded when
 | GET | `/disruptions/history` | — | daily disruption counts by line |
 | GET | `/network/lines` | — | GTFS line catalogue and coverage |
 | GET | `/network/lines/<route_id>/stations` | — | stations served by a GTFS route |
+| GET | `/privacy` | — | public privacy notice and available data rights |
+| GET | `/privacy/me` | JWT | portable JSON export of my application data |
+| PATCH | `/privacy/me` | JWT + password | rectify my identity and contact information |
+| DELETE | `/privacy/me` | JWT + password | erase my account and dependent application data |
 | POST | `/auth/signup` | — | create account |
 | POST | `/auth/login` | — | get JWT |
 | GET/POST | `/subscriptions` | JWT | list / create subscription |
@@ -161,6 +166,53 @@ The Gold-layer exposure is intentionally curated:
 | `service_calendar` | technical GTFS calendar; not exposed directly |
 | `next_stop_schedule` | raw real-time schedule; not exposed directly |
 | `next_stop_features` | ML feature table; not exposed directly |
+
+### Privacy and data-subject rights
+
+`GET /privacy` publishes the data controller, purposes, legal bases, data
+categories, retention information and available rights. Set a monitored contact
+before deploying the API:
+
+```bash
+export PRIVACY_CONTROLLER_NAME="Your organisation"
+export PRIVACY_CONTACT_EMAIL="privacy@example.eu"
+export PRIVACY_POLICY_VERSION="2026-08-31"
+```
+
+Authenticated users can exercise access/portability, rectification and erasure
+through one resource:
+
+```bash
+# Export account, subscriptions and notification history as JSON
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/privacy/me" --output itineo-personal-data.json
+
+# Correct contact information (current password required)
+curl -X PATCH -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"current-password","phone":"+33612345678"}' \
+  "http://localhost:8000/privacy/me"
+
+# Permanently erase the account, subscriptions and notifications
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"current-password","confirm":"DELETE"}' \
+  "http://localhost:8000/privacy/me"
+```
+
+The export never includes the password hash. Account erasure cascades to
+subscriptions and notification history, and JWTs belonging to the deleted user
+are rejected afterwards. The SMS delivery stub also avoids writing phone
+numbers, journey preferences or message bodies to application logs.
+
+These endpoints support data-subject rights but do not, by themselves, make a
+deployment legally compliant. The operator must still maintain the processing
+register, verify lawful bases and data minimisation, document processors and
+international transfers, define backup/log retention, handle exceptional or
+offline requests, and operate an incident-response process.
+
+Legal references: [GDPR Chapter III](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
+and the [CNIL overview of data-subject rights](https://www.cnil.fr/fr/passer-laction/les-droits-des-personnes-sur-leurs-donnees).
 
 `/search` payload — `origin`/`destination` each accept one of `{address}`,
 `{lat, lon}`, or `{station}`:

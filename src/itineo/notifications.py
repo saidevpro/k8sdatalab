@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from . import recommender
@@ -22,8 +22,10 @@ def _build_sms(subscription, routes):
     return "\n".join(lines)
 
 
-def _send_sms(phone, message):
-    print(f"[SMS] to={phone}\n{message}")
+def _send_sms(_phone, _message):
+    # The delivery provider is intentionally stubbed. Do not log phone numbers,
+    # journey preferences or message bodies because they are personal data.
+    current_app.logger.info("SMS delivery stub invoked")
 
 
 def dispatch(subscription, service_date):

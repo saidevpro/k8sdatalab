@@ -39,3 +39,9 @@ class Config:
 
     SWAGGER_USER = os.getenv("SWAGGER_USER")
     SWAGGER_PASSWORD = os.getenv("SWAGGER_PASSWORD")
+
+    PRIVACY_CONTROLLER_NAME = os.getenv(
+        "PRIVACY_CONTROLLER_NAME", "Itineo / k8sdatalab"
+    )
+    PRIVACY_CONTACT_EMAIL = os.getenv("PRIVACY_CONTACT_EMAIL")
+    PRIVACY_POLICY_VERSION = os.getenv("PRIVACY_POLICY_VERSION", "2026-08-31")

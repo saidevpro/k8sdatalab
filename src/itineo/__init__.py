@@ -9,7 +9,7 @@ SWAGGER_TEMPLATE = {
     "info": {
         "title": "IDFM Route Notification API",
         "description": "Mobility analytics, accessible route search and daily best-route notifications.",
-        "version": "1.2.0",
+        "version": "1.3.0",
     },
     "securityDefinitions": {
         "Bearer": {
@@ -45,7 +45,28 @@ def create_app(config_class=Config):
             )
         return None
 
-    from . import accessibility, analytics, auth, notifications, search, subscriptions
+    from .models import User
+
+    @jwt.user_lookup_loader
+    def load_user(_jwt_header, jwt_data):
+        try:
+            return db.session.get(User, int(jwt_data["sub"]))
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    @jwt.user_lookup_error_loader
+    def missing_token_user(_jwt_header, _jwt_data):
+        return jsonify(error="user no longer exists"), 401
+
+    from . import (
+        accessibility,
+        analytics,
+        auth,
+        notifications,
+        privacy,
+        search,
+        subscriptions,
+    )
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(subscriptions.bp)
@@ -53,6 +74,7 @@ def create_app(config_class=Config):
     app.register_blueprint(search.bp)
     app.register_blueprint(accessibility.bp)
     app.register_blueprint(analytics.bp)
+    app.register_blueprint(privacy.bp)
 
     @app.get("/health")
     def health():
