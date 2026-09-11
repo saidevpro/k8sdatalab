@@ -7,3 +7,4 @@ server
 .manifests
 .keys
 bash.sh
+.tmp
