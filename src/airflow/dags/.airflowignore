@@ -1,1 +1,8 @@
 shared_lib/
+calendar_pipeline/
+disruptions_pipelines/
+gtfs_pipelines/
+ml_pipelines/
+next_stop_pipelines/
+relations_pipelines/
+validations_pipeline/
