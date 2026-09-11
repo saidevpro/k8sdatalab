@@ -21,17 +21,17 @@ persistence:
   size: 20Gi
   storageClass: "longhorn"
 
-environment:
-  MINIO_KMS_SERVER: "https://minkms-minkms.data-platform.svc.cluster.local:7373"
-  MINIO_KMS_ENCLAVE: "minio"
-  MINIO_KMS_SSE_KEY: "minio-vault-key"
+# environment:
+#   MINIO_KMS_SERVER: "https://minkms-minkms.data-platform.svc.cluster.local:7373"
+#   MINIO_KMS_ENCLAVE: "minio"
+#   MINIO_KMS_SSE_KEY: "minio-vault-key"
 
-extraEnv:
-  - name: MINIO_KMS_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: minio-kms-credentials
-        key: api-key
+# extraEnv:
+#   - name: MINIO_KMS_API_KEY
+#     valueFrom:
+#       secretKeyRef:
+#         name: minio-kms-credentials
+#         key: api-key
 
 resources:
   requests:
